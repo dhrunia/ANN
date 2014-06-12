@@ -1,0 +1,262 @@
+#include<iostream>
+#include<armadillo>
+#include<sstream>
+#include<fstream>
+#include<vector>
+#include<ctime>
+#include<cmath>
+#include "utils.cpp"
+#include "dnn.h"
+
+using namespace std;
+using namespace arma;
+
+
+DNN::DNN(const char *dnnParamsFname)
+{
+	paramsFileName = dnnParamsFname;
+//	cout<<"parameters file name: "<<paramsFileName<<endl;
+	read_nnparams();
+//	cout<<"units in each layer: ";
+//	print_vec(unitsInLayer);
+//	cout<<"output function of units in each layer: ";
+//	print_vec(outFnType);
+//	cout<<"batchsize/bathcesperpoch: "<<batchSize<<"/"<<batchesPerEpoch<<endl;
+//	cout<<"learning rate: "<<eta<<endl;
+	initialize_weights();
+//	cout<<"weight  initialize completed"<<endl;
+	totalUnits=0;
+	for(int i=1;i<unitsInLayer.size();i++)
+		totalUnits +=unitsInLayer[i];
+	inputDimension = unitsInLayer[0];
+	outputDimension = unitsInLayer[nLayers];
+//	cout<<"Total Units: "<<totalUnits<<endl;
+	configure_network();
+//	cout<<"configuring the network completed"<<endl;
+	_A=1.716;
+	_B=2.0/3.0;
+	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
+
+}
+
+void DNN::configure_network()
+{
+	for(int layerNo=1;layerNo<=nLayers;layerNo++)
+	{
+		// create the outputs matrix of each layer say "h" [dim(h) x batchsize]
+		output.push_back(new mat(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the bias' vector of units in each layer say "h" [dim(h)]
+		bias.push_back(new colvec(unitsInLayer[layerNo],fill::zeros));
+		//create the matrix for first derviative of each layer say "h" [dim(h) x batchsize]
+		firstDerivative.push_back(new mat(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
+		localGradient.push_back(new mat(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the delta weights matrix of each layer say "h" [dim(h) x dim(h-1)]
+		deltaWeights.push_back(new mat(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
+		//create the delta bias matrix of units in each layer say "h"[dim(h)]
+		deltaBias.push_back(new colvec(unitsInLayer[layerNo],fill::zeros));
+		//intialize layer wise learning rate
+		if(layerNo == nLayers)
+		{
+			layerLr.push_back(1.0/(totalUnits)); // OutLayer Low Learning Rate
+		}
+		else
+		{
+			layerLr.push_back(1.0/(unitsInLayer[layerNo-1]));
+		}
+//		cout<<"lr of layer "<<layerNo-1<<": "<<layerLr[layerNo-1]<<endl;
+	}
+	//create the output error matrix for output layer say "o" [dim(o) x batchsize]
+	outputError = new mat(unitsInLayer[nLayers],batchSize,fill::zeros);
+}
+
+void DNN::read_nnparams()
+{
+	ifstream fh(paramsFileName);
+	string line;
+	vector<int> temp;
+	for(int lineNo=1;getline(fh,line);lineNo++)
+	{
+		switch(lineNo)
+		{
+		case 1:
+			str_to_vec(line,unitsInLayer);
+			break;
+		case 2:
+			str_to_vec(line,outFnType);
+			break;
+		case 3:
+			str_to_vec(line,temp);
+			batchSize = temp[0];
+			if(temp.size()==2)
+				batchesPerEpoch = temp[1];
+			else
+				batchesPerEpoch = 0;
+			break;
+		case 4:
+			str_to_type(line,eta);
+			break;
+		}
+	}
+	nLayers = outFnType.size();
+//	cout<<"no.of layers: "<<nLayers<<endl;
+}
+
+void DNN::initialize_weights()
+{
+	float maxweight;
+	arma_rng::set_seed(time(NULL));
+
+	for(int layerNo = 0; layerNo<nLayers; layerNo++)
+	{
+		weights.push_back(randu<mat>(unitsInLayer[layerNo+1],unitsInLayer[layerNo]));
+	}
+	for(int layerNo=0; layerNo<nLayers; layerNo++)
+	{
+		maxweight=(float)3/sqrt((double)unitsInLayer[layerNo]);
+		weights[layerNo] = 2*maxweight*weights[layerNo]-maxweight;
+	}
+//	for(int layerNo=0; layerNo<nLayers; layerNo++)
+//	{
+//		weights[layerNo].print("layer weights:");
+//	}
+
+}
+
+void DNN::compute_output(mat &input)
+{
+	mat activation;
+	activation=weights[0]*input;
+	activation.each_col() += (*bias[0]);
+//	cout<<"activation values of layer 0 computed"<<endl;
+	output_function(activation,0);
+//	cout<<"outputs of layer 0 computed"<<endl;
+	for(int layerNo=1; layerNo<nLayers; layerNo++)
+	{
+		activation=weights[layerNo]*(*(output[layerNo - 1])); //compute the activation value of each unit
+		activation.each_col() += (*bias[layerNo]);
+//		cout<<"activation values of layer "<<layerNo<<" computed"<<endl;
+		output_function(activation,layerNo); //apply the output function to the activation value of each unit
+//		cout<<"outputs of layer "<<layerNo<<" computed"<<endl;
+	}
+}
+
+void DNN::output_function(mat &act,int layerNo)
+{ // calculates the output given the activation values and the type(outFnType[layerNo]) of output function
+	if('L'== outFnType[layerNo] || 'l'== outFnType[layerNo])
+		 (*(output[layerNo]))= act;
+	else if('N'== outFnType[layerNo] || 'n'== outFnType[layerNo])
+		(*(output[layerNo]))= _A * tanh(_B*act);
+	else if('S'== outFnType[layerNo] || 's'== outFnType[layerNo])
+		(*(output[layerNo])) = 1/(1+_A*exp((-1*_B)*act));
+	else
+	{
+		cout<<" Such a output function is not implemented"<<endl;
+		exit(1);
+	}
+}
+
+void DNN::gen_output(mat &input,const char *outFileName)
+{ // generates the output of the NN for the given input data and saves in the given file
+	compute_output(input);
+	output[nLayers-1]->save(outFileName,raw_ascii);
+//	cout<<"Dimension of outputs is:"<<output[nLayers-1]->n_rows<<"x"<<output[nLayers-1]->n_cols<<endl;
+	cout<<"outputs saved to file "<<outFileName<<endl;
+}
+
+double DNN::compute_outputerror(mat &T)
+{ // T is the desired output
+	double mse;
+	rowvec temp;
+	(*outputError) = T - (*(output[nLayers-1]));
+//	mse = accu(square(*(outputError))) / batchSize;
+	temp = sum(sum(square(*(outputError))) / sum(square(T)));
+	mse = sum(temp) / batchSize;
+	return mse;
+}
+
+void DNN::compute_firstderivative(int layerNo)
+{
+	if('L'== outFnType[layerNo] || 'l'== outFnType[layerNo])
+		 firstDerivative[layerNo]->fill(1.0);
+	else if('N'== outFnType[layerNo] || 'n'== outFnType[layerNo])
+		(*(firstDerivative[layerNo]))= _Bby2A*(_A - (*output[layerNo])) % (_A + (*output[layerNo]));
+	else if('S'== outFnType[layerNo] || 's'== outFnType[layerNo])
+		(*(firstDerivative[layerNo])) = _B * (*output[layerNo]) % (1 - (*output[layerNo]));
+	else
+	{
+		cout<<"First derivative of such a output function is not implemented"<<endl;
+		exit(1);
+	}
+}
+
+void DNN::compute_localgradients()
+{
+	for(int layerNo=nLayers-1;layerNo>=0;layerNo--)
+	{
+		compute_firstderivative(layerNo);
+		if(layerNo == nLayers-1)
+			*(localGradient[layerNo])=(*outputError)%(*(firstDerivative[layerNo]));
+		else
+			*(localGradient[layerNo])=weights[layerNo+1].t() * (*localGradient[layerNo+1]) % (*(firstDerivative[layerNo]));
+	}
+}
+
+void DNN::compute_deltas(mat& input,float momentum)
+{
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		if(layerNo==0)
+			*(deltaWeights[layerNo]) = (eta/batchSize) * (*(localGradient[layerNo])) * input.t();
+		else
+			*(deltaWeights[layerNo]) = (eta/batchSize) * (*(localGradient[layerNo])) * (output[layerNo-1])->t();
+
+		*(deltaBias[layerNo]) = (eta/batchSize) * sum(*(localGradient[layerNo]),1);
+	}
+}
+
+void DNN::compute_deltaswithmomentum(mat& input,float momentum)
+{
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		if(layerNo==0)
+			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (eta/batchSize) * (*(localGradient[layerNo])) * input.t();
+		else
+			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (eta/batchSize) * (*(localGradient[layerNo])) * (output[layerNo-1])->t();
+
+		*(deltaBias[layerNo]) = momentum * (*(deltaBias[layerNo])) + (eta/batchSize) * sum(*(localGradient[layerNo]),1);
+	}
+}
+
+void DNN::compute_deltaswithmomandlayerlr(mat& input,float momentum)
+{
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		if(layerNo==0)
+			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(localGradient[layerNo]) * input.t());
+		else
+			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(localGradient[layerNo]) * (output[layerNo-1])->t());
+
+		*(deltaBias[layerNo]) = momentum * (*(deltaBias[layerNo])) + (layerLr[layerNo]/batchSize) * sum(*(localGradient[layerNo]),1);
+	}
+}
+
+void DNN::increment_weights()
+{
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		weights[layerNo] = weights[layerNo] + (*(deltaWeights[layerNo]));
+		*(bias[layerNo]) = *(bias[layerNo]) + (*(deltaBias[layerNo]));
+	}
+}
+
+void DNN::save_weights(const char *wtsFname)
+{
+//	stringstream wtsSS;
+	ofstream wts(wtsFname);
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+		if(!(weights[layerNo]).save(wts,arma_ascii))
+			cout<<"Error in saving weights of layer "<<layerNo<<endl;
+	wts.close();
+}
+
