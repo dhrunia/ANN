@@ -1,9 +1,11 @@
 #include<iostream>
 #include<armadillo>
-#include"Dnn_v1.cpp"
+#include"Dnn_v2.cpp"
 #include<sstream>
 #include<fstream>
 #include<vector>
+#include<ctime>
+#include<iomanip>
 
 using namespace arma;
 using namespace std;
@@ -13,6 +15,9 @@ int main(int argc,char** argv)
 	const char *inpFname,*outFname,*paramsFname,*errorFname,*weightsFname;
 	int nEpochs;
 	float momentum;
+	double timeElapsed;
+	clock_t startTime,endTime;
+	startTime = clock();
 //	cout<<"number of arguments passed: "<<argc<<endl;
 	if(!(argc<7))
 	{
@@ -32,7 +37,11 @@ int main(int argc,char** argv)
 		cout<<"6 arguments are expected as input to the program, only "<<argc<<" are given"<<endl;
 		cout<<"Run it as follows:"<<endl;
 		cout<<"./DnnTrain_v1 <parameters file> <input file> <output file> <weights file> <#Epochs> <momentum>"<<endl;
-		cout<<"argument 1: Neural network parameters file name"<<endl;
+		cout<<"argument 1: Neural network parameters file name in the following format:"<<endl;
+		cout<<" <units in input layer> <units in first layer> <units in second hidden layer> ... <units in output layer>"<<endl;
+		cout<<" <output function type of first hidden layer> ... <output function type of output layer>"<<endl;
+		cout<<" <batchsize> [<batches per epoch> optional]"<<endl;
+		cout<<" <learning rate>"<<endl;
 		cout<<"argument 2: Input data file name"<<endl;
 		cout<<"argument 3: Output data file name"<<endl;
 		cout<<"argument 4: Weights file name(weights are saved to this file)"<<endl;
@@ -75,10 +84,11 @@ int main(int argc,char** argv)
 	if(!errfh.is_open())
 		cout<<"unable to open file "<<errorFname<<endl;
 	arma_rng::set_seed_random();
+	cout<<"Training started";
 	for(int epochNo =0;epochNo<nEpochs;epochNo++)
 	{
 		frameNos = randi<uvec>(nFrames-(nFrames%batchSize),distr_param(0,nFrames-1));
-		cout<<"Epoch: "<<epochNo<<""<<endl;
+//		cout<<"Epoch: "<<epochNo<<""<<endl;
 		for(int batchNo=0;batchNo<batchesPerEpoch;batchNo++)
 		{
 //			inds = randi<uvec>(nn->batchSize,distr_param(0,nFrames-1));
@@ -99,11 +109,19 @@ int main(int argc,char** argv)
 			nn->increment_weights();
 //			cout<<"weights incremented"<<endl;
 		}
-		cout<<"Error: "<<batchError<<endl;
+//		cout<<"Error: "<<batchError<<endl;
 		errfh<<batchError<<endl;
 		batchError=0;
+		cout<<".";
+		cout.flush();
 	}
+	cout<<endl;
+	cout<<"Training completed"<<endl;
 	nn->save_weights(weightsFname);
+	endTime = clock();
+	timeElapsed = (endTime-startTime)/((double)CLOCKS_PER_SEC*60);
+	cout << fixed << showpoint << setprecision(2);
+	cout<<"Time elapsed: "<< timeElapsed <<" minutes" <<endl;
 	errfh.close();
 }
 
