@@ -23,8 +23,6 @@ DNN::DNN(const char *dnnParamsFname)
 //	print_vec(outFnType);
 //	cout<<"batchsize/bathcesperpoch: "<<batchSize<<"/"<<batchesPerEpoch<<endl;
 //	cout<<"learning rate: "<<eta<<endl;
-	initialize_weights();
-//	cout<<"weight  initialize completed"<<endl;
 	totalUnits=0;
 	for(int i=1;i<unitsInLayer.size();i++)
 		totalUnits +=unitsInLayer[i];
@@ -33,6 +31,8 @@ DNN::DNN(const char *dnnParamsFname)
 //	cout<<"Total Units: "<<totalUnits<<endl;
 	configure_network();
 //	cout<<"configuring the network completed"<<endl;
+	initialize_weights();
+//	cout<<"weight  initialize completed"<<endl;
 	_A=1.716;
 	_B=2.0/3.0;
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
@@ -49,8 +49,6 @@ DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname)
 //	print_vec(outFnType);
 //	cout<<"batchsize/bathcesperpoch: "<<batchSize<<"/"<<batchesPerEpoch<<endl;
 //	cout<<"learning rate: "<<eta<<endl;
-	read_weights(wtsFname,biasFname,"raw_ascii");
-//	cout<<"weight  initialize completed"<<endl;
 	totalUnits=0;
 	for(int i=1;i<unitsInLayer.size();i++)
 		totalUnits +=unitsInLayer[i];
@@ -59,6 +57,8 @@ DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname)
 //	cout<<"Total Units: "<<totalUnits<<endl;
 	configure_network();
 //	cout<<"configuring the network completed"<<endl;
+	read_weights(wtsFname,biasFname,"raw_ascii");
+//	cout<<"weights and bias initialized from files"<<wtsFname<<" and "<<biasFname<<endl;
 	_A=1.716;
 	_B=2.0/3.0;
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
@@ -135,11 +135,13 @@ void DNN::initialize_weights()
 	for(int layerNo = 0; layerNo<nLayers; layerNo++)
 	{
 		weights.push_back(randu<mat>(unitsInLayer[layerNo+1],unitsInLayer[layerNo]));
+		*(bias[layerNo]) = randu<mat>(unitsInLayer[layerNo+1]);
 	}
 	for(int layerNo=0; layerNo<nLayers; layerNo++)
 	{
 		maxweight=(float)3/sqrt((double)unitsInLayer[layerNo]);
 		weights[layerNo] = 2*maxweight*weights[layerNo]-maxweight;
+		*(bias[layerNo]) = 2*maxweight*(*bias[layerNo])-maxweight;
 	}
 //	for(int layerNo=0; layerNo<nLayers; layerNo++)
 //	{
