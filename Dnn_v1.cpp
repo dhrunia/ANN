@@ -36,7 +36,32 @@ DNN::DNN(const char *dnnParamsFname)
 	_A=1.716;
 	_B=2.0/3.0;
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
+}
 
+DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname)
+{
+	paramsFileName = dnnParamsFname;
+//	cout<<"parameters file name: "<<paramsFileName<<endl;
+	read_nnparams();
+//	cout<<"units in each layer: ";
+//	print_vec(unitsInLayer);
+//	cout<<"output function of units in each layer: ";
+//	print_vec(outFnType);
+//	cout<<"batchsize/bathcesperpoch: "<<batchSize<<"/"<<batchesPerEpoch<<endl;
+//	cout<<"learning rate: "<<eta<<endl;
+	read_weights(wtsFname,biasFname,"raw_ascii");
+//	cout<<"weight  initialize completed"<<endl;
+	totalUnits=0;
+	for(int i=1;i<unitsInLayer.size();i++)
+		totalUnits +=unitsInLayer[i];
+	inputDimension = unitsInLayer[0];
+	outputDimension = unitsInLayer[nLayers];
+//	cout<<"Total Units: "<<totalUnits<<endl;
+	configure_network();
+//	cout<<"configuring the network completed"<<endl;
+	_A=1.716;
+	_B=2.0/3.0;
+	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
 }
 
 void DNN::configure_network()
@@ -120,7 +145,36 @@ void DNN::initialize_weights()
 //	{
 //		weights[layerNo].print("layer weights:");
 //	}
+}
 
+void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileType)
+{
+	ifstream wtsfh(wtsFname);
+	ifstream biasfh(biasFname);
+	rowvec tempRowVec = rowvec();
+	char temp[100];
+	if(fileType == "raw_ascii")
+		for(int layerNo=0;layerNo<nLayers;layerNo++)
+		{
+			weights.push_back(mat());
+			weights[layerNo].load(wtsfh,raw_ascii);
+			wtsfh.getline(temp,100);
+			wtsfh.getline(temp,100);
+			bias.push_back( new colvec());
+			tempRowVec.load(biasfh,raw_ascii);
+			*(bias[layerNo]) = tempRowVec.t();
+			biasfh.getline(temp,100);
+			biasfh.getline(temp,100);
+		}
+	else if(fileType == "arma_ascii")
+		for(int layerNo=0;layerNo<nLayers;layerNo++)
+		{
+			weights.push_back(mat());
+			weights[layerNo].load(wtsfh,arma_ascii);
+			bias.push_back( new colvec());
+			tempRowVec.load(biasfh,raw_ascii);
+			*(bias[layerNo]) = tempRowVec.t();
+		}
 }
 
 void DNN::compute_output(mat &input)
@@ -139,6 +193,7 @@ void DNN::compute_output(mat &input)
 		output_function(activation,layerNo); //apply the output function to the activation value of each unit
 //		cout<<"outputs of layer "<<layerNo<<" computed"<<endl;
 	}
+//	output[nLayers-1]->print("output:");
 }
 
 void DNN::output_function(mat &act,int layerNo)
@@ -200,6 +255,9 @@ void DNN::compute_localgradients()
 		else
 			*(localGradient[layerNo])=weights[layerNo+1].t() * (*localGradient[layerNo+1]) % (*(firstDerivative[layerNo]));
 	}
+
+//	for(int layerNo = 0;layerNo<nLayers;layerNo++)
+//		localGradient[layerNo]->print("Local Gradients:");
 }
 
 void DNN::compute_deltas(mat& input,float momentum)
@@ -250,13 +308,20 @@ void DNN::increment_weights()
 	}
 }
 
-void DNN::save_weights(const char *wtsFname)
+void DNN::save_weights(const char *wtsFname,const char *biasFname)
 {
-//	stringstream wtsSS;
-	ofstream wts(wtsFname);
+	ofstream wtsfh(wtsFname);
+	ofstream biasfh(biasFname);
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
-		if(!(weights[layerNo]).save(wts,arma_ascii))
-			cout<<"Error in saving weights of layer "<<layerNo<<endl;
-	wts.close();
+	{
+		if(!(weights[layerNo]).save(wtsfh,arma_ascii))
+			cerr<<"Error in saving weights of layer "<<layerNo<<endl;
+		wtsfh<<endl;
+		if(!bias[layerNo]->save(biasfh,arma_ascii))
+			cerr<<"Error in saving biases of layer "<<layerNo<<endl;
+		biasfh<<endl;
+	}
+	wtsfh.close();
+	biasfh.close();
 }
 

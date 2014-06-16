@@ -1,6 +1,6 @@
 #include<iostream>
 #include<armadillo>
-#include"Dnn_v2.cpp"
+#include"Dnn_v1.cpp"
 #include<sstream>
 #include<fstream>
 #include<vector>
@@ -12,23 +12,24 @@ using namespace std;
 
 int main(int argc,char** argv)
 {
-	const char *inpFname,*outFname,*paramsFname,*errorFname,*weightsFname;
+	const char *inpFname,*outFname,*paramsFname,*errorFname,*weightsFname,*biasFname;
 	int nEpochs;
 	float momentum;
 	double timeElapsed;
 	clock_t startTime,endTime;
 	startTime = clock();
 //	cout<<"number of arguments passed: "<<argc<<endl;
-	if(!(argc<7))
+	if(!(argc<8))
 	{
 		paramsFname = argv[1];
 		inpFname = argv[2];
 		outFname = argv[3];
 		weightsFname = argv[4];
+		biasFname = argv[5];
 //		nEpochs=lexical_cast<int>(argv[5]);
 //		momentum = lexical_cast<float>(argv[6]);
-		str_to_type(argv[5],nEpochs);
-		str_to_type(argv[6],momentum);
+		str_to_type(argv[6],nEpochs);
+		str_to_type(argv[7],momentum);
 //		cout<<"inp_fname: "<<inpFname<<endl;
 //		cout<<"out_fname: "<<outFname<<endl;
 //		cout<<"no.of epochs:"<<nEpochs<<endl;
@@ -44,9 +45,10 @@ int main(int argc,char** argv)
 		cout<<" <learning rate>"<<endl;
 		cout<<"argument 2: Input data file name"<<endl;
 		cout<<"argument 3: Output data file name"<<endl;
-		cout<<"argument 4: Weights file name(weights are saved to this file)"<<endl;
-		cout<<"argument 5: Number of Epochs"<<endl;
-		cout<<"argument 6: Momentum"<<endl;
+		cout<<"argument 4: Weights file name"<<endl;
+		cout<<"argument 5: bias file name"<<endl;
+		cout<<"argument 6: Number of Epochs"<<endl;
+		cout<<"argument 7: Momentum"<<endl;
 		exit(0);
 	}
 	errorFname = "errors.txt";
@@ -70,6 +72,7 @@ int main(int argc,char** argv)
 //	cout<<"Dim. of output data :"<<outputData->n_rows<<"x"<<outputData->n_cols<<endl;
 //	cout<<outputData.submat(0,0,4,2);
 	DNN *nn = new DNN(paramsFname);
+//	DNN *nn = new DNN(paramsFname,weightsFname,biasFname);
 	batchSize = nn->batchSize;
 	if(nn->batchesPerEpoch)
 		batchesPerEpoch = nn->batchesPerEpoch;
@@ -117,7 +120,7 @@ int main(int argc,char** argv)
 	}
 	cout<<endl;
 	cout<<"Training completed"<<endl;
-	nn->save_weights(weightsFname);
+	nn->save_weights(weightsFname,biasFname);
 	endTime = clock();
 	timeElapsed = (endTime-startTime)/((double)CLOCKS_PER_SEC*60);
 	cout << fixed << showpoint << setprecision(2);

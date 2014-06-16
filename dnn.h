@@ -43,9 +43,10 @@ public:
 	int batchesPerEpoch;
 	int inputDimension;
 	int outputDimension;
+	DNN(const char*);
+	DNN(const char*,const char*,const char*);
 	void initialize_weights();
 	void configure_network();
-	DNN(const char*);
 	void read_nnparams();
 	void compute_output(mat &input);	/* Pass the Input Pattern*/
 	void compute_deltas();
@@ -59,7 +60,8 @@ public:
 	void gen_output(mat&,const char*);
 	void compute_deltas(mat&,float);
 	void increment_weights();
-	void save_weights(const char*);
+	void save_weights(const char*,const char*);
+	void read_weights(const char*,const char*,string);
 };
 
 #endif /* DNN_UTILS_H_ */
