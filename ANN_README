@@ -20,7 +20,7 @@ g++ -O2 -larmadillo -o DnnTrain_v* DnnTrain_v*.cpp
  
 step2:execute the program as follows:
 
-./DnnTrain_v* <parameters file> <input file> <output file> <weights file> <#Epochs> <momentum>
+./DnnTrain_v* <parameters file> <input file> <output file> <weights file> <bias file> <#Epochs> <momentum>
 
 Ex: ./DnnTrain_v* params train.lpcc train.frm weights.txt 60 0.3
 
@@ -49,6 +49,10 @@ File containing output data
 weights file:
 
 File where weights of trained network are saved
+
+bias file:
+
+File where bias of trained network are saved
 
 #Epochs:
 

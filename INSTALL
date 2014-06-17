@@ -1,0 +1,28 @@
+Installation errors and solutions
+-----------------------------------------
+Arpack 
+-------
+
+	Error: make lib
+	Solution: make FC=gfortran FFLAGS= MAKE=/usr/bin/make ARPACKLIB=$HOME/ARPACK/libarpack.a lib 
+
+		Note: The location of the ARPACKLIB should correspond to your current directory
+
+	Finally, you also need Lapack and BLAS libraries, that you can install in Ubuntu with the following commands:
+		sudo apt-get install liblapack-dev
+		sudo apt-get install libblas-dev
+
+Armadillo
+----------
+	
+	Error: Incase of using make install DESTDIR=my_usr_dir during installation
+        Solution: g++ -I/home/armadillo-4.300.8/my_usr_dir/usr/include/ -L/home/armadillo-4.300.8/my_usr_dir/usr/lib/ DnnTrain_v1.cpp -o DnnTrain_v1 -O2 -larmadillo
+
+		Note: Change the location of armadillo-4.300.8 accordingly
+
+	Error while compiling: g++ DnnTrain_v1.cpp -o DnnTrain_v1 -O2 -larmadillo 
+	
+			undefined reference to `pthread_create'
+			undefined reference to `pthread_atfork'
+			undefined reference to `pthread_join'
+	Soltuion: g++ DnnTrain_v1.cpp -o DnnTrain_v1 -O2 -larmadillo -lpthread
