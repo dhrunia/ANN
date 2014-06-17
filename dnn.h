@@ -25,7 +25,7 @@ class DNN
 	vector<float> layerLr; //layer wise learning rate
 	vector<float> localGradients;
 	const char *paramsFileName; //file containing parameters for the neural network
-	vector<char> outFnType; //type of output function for each layer
+	vector<string> outFnType; //type of output function for each layer
 	vector<mat*> output; //outputs of each layer for a given input batch
 	mat* outputError;
 	vector<colvec*> bias;

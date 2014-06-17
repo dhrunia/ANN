@@ -200,12 +200,19 @@ void DNN::compute_output(mat &input)
 
 void DNN::output_function(mat &act,int layerNo)
 { // calculates the output given the activation values and the type(outFnType[layerNo]) of output function
-	if('L'== outFnType[layerNo] || 'l'== outFnType[layerNo])
+	if("L"== outFnType[layerNo] || "l"== outFnType[layerNo])
 		 (*(output[layerNo]))= act;
-	else if('N'== outFnType[layerNo] || 'n'== outFnType[layerNo])
+	else if("N"== outFnType[layerNo] || "n"== outFnType[layerNo])
 		(*(output[layerNo]))= _A * tanh(_B*act);
-	else if('S'== outFnType[layerNo] || 's'== outFnType[layerNo])
+	else if("S"== outFnType[layerNo] || "s"== outFnType[layerNo])
 		(*(output[layerNo])) = 1/(1+_A*exp((-1*_B)*act));
+	else if("SM" == outFnType[layerNo] || "sm" == outFnType[layerNo])
+	{
+		rowvec sum_rvec; // sum of all the outputs of the given layer for all frames in a batch
+		sum_rvec = sum(act);
+		(*(output[layerNo])) = exp(act);
+		output[layerNo]->each_row() /= sum_rvec;
+	}
 	else
 	{
 		cout<<" Such a output function is not implemented"<<endl;
@@ -234,12 +241,14 @@ double DNN::compute_outputerror(mat &T)
 
 void DNN::compute_firstderivative(int layerNo)
 {
-	if('L'== outFnType[layerNo] || 'l'== outFnType[layerNo])
+	if("L"== outFnType[layerNo] || "l"== outFnType[layerNo])
 		 firstDerivative[layerNo]->fill(1.0);
-	else if('N'== outFnType[layerNo] || 'n'== outFnType[layerNo])
+	else if("N"== outFnType[layerNo] || "n"== outFnType[layerNo])
 		(*(firstDerivative[layerNo]))= _Bby2A*(_A - (*output[layerNo])) % (_A + (*output[layerNo]));
-	else if('S'== outFnType[layerNo] || 's'== outFnType[layerNo])
+	else if("S"== outFnType[layerNo] || "s"== outFnType[layerNo])
 		(*(firstDerivative[layerNo])) = _B * (*output[layerNo]) % (1 - (*output[layerNo]));
+	else if("SM"== outFnType[layerNo] || "sm"== outFnType[layerNo])
+			(*(firstDerivative[layerNo])) = (*output[layerNo]) % (1 - (*output[layerNo]));
 	else
 	{
 		cout<<"First derivative of such a output function is not implemented"<<endl;
