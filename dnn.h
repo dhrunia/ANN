@@ -44,7 +44,7 @@ public:
 	int inputDimension;
 	int outputDimension;
 	DNN(const char*);
-	DNN(const char*,const char*,const char*);
+	DNN(const char*,const char*,const char*,string);
 	void initialize_weights();
 	void configure_network();
 	void read_nnparams();
@@ -57,11 +57,12 @@ public:
 								   //and MSE(mean squared error)
 	void compute_firstderivative(int);
 	void compute_localgradients();
-	void gen_output(mat&,const char*);
+	void gen_output(mat&,const char*,bool);
 	void compute_deltas(mat&,float);
 	void increment_weights();
 	void save_weights(const char*,const char*);
 	void read_weights(const char*,const char*,string);
+	void print_weights();
 };
 
 #endif /* DNN_UTILS_H_ */

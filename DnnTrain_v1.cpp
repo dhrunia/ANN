@@ -35,20 +35,22 @@ int main(int argc,char** argv)
 //		cout<<"no.of epochs:"<<nEpochs<<endl;
 	}
 	else{
-		cout<<"6 arguments are expected as input to the program, only "<<argc<<" are given"<<endl;
-		cout<<"Run it as follows:"<<endl;
-		cout<<"./DnnTrain_v1 <parameters file> <input file> <output file> <weights file> <#Epochs> <momentum>"<<endl;
-		cout<<"argument 1: Neural network parameters file name in the following format:"<<endl;
-		cout<<" <units in input layer> <units in first layer> <units in second hidden layer> ... <units in output layer>"<<endl;
-		cout<<" <output function type of first hidden layer> ... <output function type of output layer>"<<endl;
-		cout<<" <batchsize> [<batches per epoch> optional]"<<endl;
-		cout<<" <learning rate>"<<endl;
-		cout<<"argument 2: Input data file name"<<endl;
-		cout<<"argument 3: Output data file name"<<endl;
-		cout<<"argument 4: Weights file name"<<endl;
-		cout<<"argument 5: bias file name"<<endl;
-		cout<<"argument 6: Number of Epochs"<<endl;
-		cout<<"argument 7: Momentum"<<endl;
+		cerr<<"6 arguments are expected as input to the program, only "<<argc<<" are given"<<endl;
+		cerr<<"Run it as follows:"<<endl;
+		cerr<<"./DnnTrain_v1 <parameters file> <input file> <output file> <weights file> <#Epochs> <momentum>"<<endl<<endl;
+		cerr<<"argument 1: Neural network parameters file name in the following format:"<<endl;
+		cerr<<"-------------------------"<<endl;
+		cerr<<" <units in input layer> <units in first layer> <units in second hidden layer> ... <units in output layer>"<<endl;
+		cerr<<" <output function type of first hidden layer> ... <output function type of output layer>"<<endl;
+		cerr<<" <batchsize> [<batches per epoch> optional]"<<endl;
+		cerr<<" <learning rate>"<<endl;
+		cerr<<"-------------------------"<<endl<<endl;
+		cerr<<"argument 2: Input data file name"<<endl;
+		cerr<<"argument 3: Output data file name"<<endl;
+		cerr<<"argument 4: Weights file name"<<endl;
+		cerr<<"argument 5: bias file name"<<endl;
+		cerr<<"argument 6: Number of Epochs"<<endl;
+		cerr<<"argument 7: Momentum"<<endl;
 		exit(0);
 	}
 	errorFname = "errors.txt";
@@ -87,14 +89,14 @@ int main(int argc,char** argv)
 	if(!errfh.is_open())
 		cout<<"unable to open file "<<errorFname<<endl;
 	arma_rng::set_seed_random();
-	cout<<"Training started";
+//	cout<<"Training started";
 	for(int epochNo =0;epochNo<nEpochs;epochNo++)
 	{
 		frameNos = randi<uvec>(nFrames-(nFrames%batchSize),distr_param(0,nFrames-1));
-//		cout<<"Epoch: "<<epochNo<<""<<endl;
+//		frameNos << 1 << 4 << 0;
+		cout<<"Epoch: "<<epochNo<<""<<endl;
 		for(int batchNo=0;batchNo<batchesPerEpoch;batchNo++)
 		{
-//			inds = randi<uvec>(nn->batchSize,distr_param(0,nFrames-1));
 			batchSP = batchNo*batchSize;
 			batchFrameNos = frameNos.subvec(batchSP,batchSP+batchSize-1);
 			*batchInput = inputData->cols(batchFrameNos);
@@ -112,14 +114,15 @@ int main(int argc,char** argv)
 			nn->increment_weights();
 //			cout<<"weights incremented"<<endl;
 		}
-//		cout<<"Error: "<<batchError<<endl;
+		cout<<"Error: "<<batchError<<endl;
 		errfh<<batchError<<endl;
 		batchError=0;
-		cout<<".";
-		cout.flush();
+//		cout<<".";
+//		cout.flush();
 	}
 	cout<<endl;
 	cout<<"Training completed"<<endl;
+//	nn->print_weights();
 	nn->save_weights(weightsFname,biasFname);
 	endTime = clock();
 	timeElapsed = (endTime-startTime)/((double)CLOCKS_PER_SEC*60);

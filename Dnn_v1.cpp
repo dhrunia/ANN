@@ -38,8 +38,9 @@ DNN::DNN(const char *dnnParamsFname)
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
 }
 
-DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname)
-{
+DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname,string fileType)
+{ //fileType represents how the data in weights and bias files are to be identified
+
 	paramsFileName = dnnParamsFname;
 //	cout<<"parameters file name: "<<paramsFileName<<endl;
 	read_nnparams();
@@ -57,11 +58,17 @@ DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname)
 //	cout<<"Total Units: "<<totalUnits<<endl;
 	configure_network();
 //	cout<<"configuring the network completed"<<endl;
-	read_weights(wtsFname,biasFname,"raw_ascii");
+	if(fileType == "raw_ascii")
+		read_weights(wtsFname,biasFname,"raw_ascii");
+	else if(fileType == "arma_ascii")
+		read_weights(wtsFname,biasFname,"arma_ascii");
+	else
+		cerr<<"Invalid file type"<<endl;
 //	cout<<"weights and bias initialized from files"<<wtsFname<<" and "<<biasFname<<endl;
 	_A=1.716;
 	_B=2.0/3.0;
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
+
 }
 
 void DNN::configure_network()
@@ -174,8 +181,9 @@ void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileTyp
 			weights.push_back(mat());
 			weights[layerNo].load(wtsfh,arma_ascii);
 			bias.push_back( new colvec());
-			tempRowVec.load(biasfh,raw_ascii);
-			*(bias[layerNo]) = tempRowVec.t();
+//			tempRowVec.load(biasfh,arma_ascii);
+//			*(bias[layerNo]) = tempRowVec.t();
+			bias[layerNo]->load(biasfh,arma_ascii);
 		}
 }
 
@@ -209,8 +217,8 @@ void DNN::output_function(mat &act,int layerNo)
 	else if("SM" == outFnType[layerNo] || "sm" == outFnType[layerNo])
 	{
 		rowvec sum_rvec; // sum of all the outputs of the given layer for all frames in a batch
-		sum_rvec = sum(act);
 		(*(output[layerNo])) = exp(act);
+		sum_rvec = sum(*(output[layerNo]));
 		output[layerNo]->each_row() /= sum_rvec;
 	}
 	else
@@ -220,10 +228,28 @@ void DNN::output_function(mat &act,int layerNo)
 	}
 }
 
-void DNN::gen_output(mat &input,const char *outFileName)
+void DNN::gen_output(mat &input,const char *outFileName,bool one_hot=false)
 { // generates the output of the NN for the given input data and saves in the given file
+	rowvec row_temp;
+	uword maxIdx;
+	ofstream wtsfh; // used only for classification tasks
 	compute_output(input);
-	output[nLayers-1]->save(outFileName,raw_ascii);
+	*(output[nLayers-1]) = output[nLayers-1]->t();
+	if(!one_hot)
+		output[nLayers-1]->save(outFileName,raw_ascii);
+	else
+	{
+		wtsfh.open(outFileName,ios::out);
+		for(int i=0;i<output[nLayers-1]->n_rows;i++)
+		{
+			row_temp = output[nLayers-1]->row(i);
+			row_temp.max(maxIdx);
+			maxIdx += 1;
+			wtsfh<<maxIdx<<endl;
+		}
+		wtsfh.close();
+	}
+//	output[nLayers-1]->save(outFileName,raw_ascii);
 //	cout<<"Dimension of outputs is:"<<output[nLayers-1]->n_rows<<"x"<<output[nLayers-1]->n_cols<<endl;
 	cout<<"outputs saved to file "<<outFileName<<endl;
 }
@@ -334,5 +360,22 @@ void DNN::save_weights(const char *wtsFname,const char *biasFname)
 	}
 	wtsfh.close();
 	biasfh.close();
+}
+
+void DNN::print_weights()
+{
+	cout<<"WEIGHTS:";
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		cout<<endl;
+		cout<<weights[layerNo];
+	}
+
+	cout<<"BIAS:";
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		cout<<endl;
+		bias[layerNo]->print();
+	}
 }
 

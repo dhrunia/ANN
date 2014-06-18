@@ -42,3 +42,11 @@ testmat.sav
 train.frm
 train.lpcc
 weights.txt
+DnnTest
+input_data
+iris.input
+iris.input~
+iris.output
+iris.output~
+output_data
+preds.txt
