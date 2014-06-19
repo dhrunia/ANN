@@ -89,12 +89,12 @@ int main(int argc,char** argv)
 	if(!errfh.is_open())
 		cout<<"unable to open file "<<errorFname<<endl;
 	arma_rng::set_seed_random();
-//	cout<<"Training started";
+	cout<<"Training started";
 	for(int epochNo =0;epochNo<nEpochs;epochNo++)
 	{
 		frameNos = randi<uvec>(nFrames-(nFrames%batchSize),distr_param(0,nFrames-1));
 //		frameNos << 1 << 4 << 0;
-		cout<<"Epoch: "<<epochNo<<""<<endl;
+//		cout<<"Epoch: "<<epochNo<<""<<endl;
 		for(int batchNo=0;batchNo<batchesPerEpoch;batchNo++)
 		{
 			batchSP = batchNo*batchSize;
@@ -114,11 +114,11 @@ int main(int argc,char** argv)
 			nn->increment_weights();
 //			cout<<"weights incremented"<<endl;
 		}
-		cout<<"Error: "<<batchError<<endl;
+//		cout<<"Error: "<<batchError<<endl;
 		errfh<<batchError<<endl;
 		batchError=0;
-//		cout<<".";
-//		cout.flush();
+		cout<<".";
+		cout.flush();
 	}
 	cout<<endl;
 	cout<<"Training completed"<<endl;

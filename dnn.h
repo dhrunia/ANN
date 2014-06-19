@@ -1,9 +1,3 @@
-/*
- * dnn_utils.h
- *
- *  Created on: Jun 9, 2014
- *      Author: anirudh
- */
 
 #ifndef DNN_H_
 #define DNN_H_
@@ -14,6 +8,8 @@
 
 using namespace arma;
 using namespace std;
+
+typedef double elem_type;
 
 class DNN
 {
