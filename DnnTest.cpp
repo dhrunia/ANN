@@ -7,7 +7,7 @@ using namespace arma;
 
 int main(int argc,char **argv)
 {
-	mat input,output;
+	Mat<elem_type> input,output;
 	const char *inpFname,*outFname,*wtsFname,*biasFname,*paramsFname,*taskType;
 	if(argc<7)
 	{
