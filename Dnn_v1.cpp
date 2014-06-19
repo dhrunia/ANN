@@ -76,15 +76,15 @@ void DNN::configure_network()
 	for(int layerNo=1;layerNo<=nLayers;layerNo++)
 	{
 		// create the outputs matrix of each layer say "h" [dim(h) x batchsize]
-		output.push_back(new mat(unitsInLayer[layerNo],batchSize,fill::zeros));
+		output.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
 		//create the bias' vector of units in each layer say "h" [dim(h)]
 		bias.push_back(new colvec(unitsInLayer[layerNo],fill::zeros));
 		//create the matrix for first derviative of each layer say "h" [dim(h) x batchsize]
-		firstDerivative.push_back(new mat(unitsInLayer[layerNo],batchSize,fill::zeros));
+		firstDerivative.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
 		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
-		localGradient.push_back(new mat(unitsInLayer[layerNo],batchSize,fill::zeros));
+		localGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
 		//create the delta weights matrix of each layer say "h" [dim(h) x dim(h-1)]
-		deltaWeights.push_back(new mat(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
+		deltaWeights.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
 		//create the delta bias matrix of units in each layer say "h"[dim(h)]
 		deltaBias.push_back(new colvec(unitsInLayer[layerNo],fill::zeros));
 		//intialize layer wise learning rate
@@ -99,7 +99,7 @@ void DNN::configure_network()
 //		cout<<"lr of layer "<<layerNo-1<<": "<<layerLr[layerNo-1]<<endl;
 	}
 	//create the output error matrix for output layer say "o" [dim(o) x batchsize]
-	outputError = new mat(unitsInLayer[nLayers],batchSize,fill::zeros);
+	outputError = new Mat<elem_type>(unitsInLayer[nLayers],batchSize,fill::zeros);
 }
 
 void DNN::read_nnparams()
@@ -141,8 +141,8 @@ void DNN::initialize_weights()
 
 	for(int layerNo = 0; layerNo<nLayers; layerNo++)
 	{
-		weights.push_back(randu<mat>(unitsInLayer[layerNo+1],unitsInLayer[layerNo]));
-		*(bias[layerNo]) = randu<mat>(unitsInLayer[layerNo+1]);
+		weights.push_back(randu< Mat<elem_type> >(unitsInLayer[layerNo+1],unitsInLayer[layerNo]));
+		*(bias[layerNo]) = randu< Mat<elem_type> >(unitsInLayer[layerNo+1]);
 	}
 	for(int layerNo=0; layerNo<nLayers; layerNo++)
 	{
@@ -165,7 +165,7 @@ void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileTyp
 	if(fileType == "raw_ascii")
 		for(int layerNo=0;layerNo<nLayers;layerNo++)
 		{
-			weights.push_back(mat());
+			weights.push_back(Mat<elem_type>());
 			weights[layerNo].load(wtsfh,raw_ascii);
 			wtsfh.getline(temp,100);
 			wtsfh.getline(temp,100);
@@ -178,7 +178,7 @@ void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileTyp
 	else if(fileType == "arma_ascii")
 		for(int layerNo=0;layerNo<nLayers;layerNo++)
 		{
-			weights.push_back(mat());
+			weights.push_back(Mat<elem_type>());
 			weights[layerNo].load(wtsfh,arma_ascii);
 			bias.push_back( new colvec());
 //			tempRowVec.load(biasfh,arma_ascii);
@@ -187,9 +187,9 @@ void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileTyp
 		}
 }
 
-void DNN::compute_output(mat &input)
+void DNN::compute_output(Mat<elem_type> &input)
 {
-	mat activation;
+	Mat<elem_type> activation;
 	activation=weights[0]*input;
 	activation.each_col() += (*bias[0]);
 //	cout<<"activation values of layer 0 computed"<<endl;
@@ -206,7 +206,7 @@ void DNN::compute_output(mat &input)
 //	output[nLayers-1]->print("output:");
 }
 
-void DNN::output_function(mat &act,int layerNo)
+void DNN::output_function(Mat<elem_type> &act,int layerNo)
 { // calculates the output given the activation values and the type(outFnType[layerNo]) of output function
 	if("L"== outFnType[layerNo] || "l"== outFnType[layerNo])
 		 (*(output[layerNo]))= act;
@@ -228,7 +228,7 @@ void DNN::output_function(mat &act,int layerNo)
 	}
 }
 
-void DNN::gen_output(mat &input,const char *outFileName,bool one_hot=false)
+void DNN::gen_output(Mat<elem_type> &input,const char *outFileName,bool one_hot=false)
 { // generates the output of the NN for the given input data and saves in the given file
 	rowvec row_temp;
 	uword maxIdx;
@@ -254,7 +254,7 @@ void DNN::gen_output(mat &input,const char *outFileName,bool one_hot=false)
 	cout<<"outputs saved to file "<<outFileName<<endl;
 }
 
-double DNN::compute_outputerror(mat &T)
+double DNN::compute_outputerror(Mat<elem_type> &T)
 { // T is the desired output
 	double mse;
 	rowvec temp;
@@ -297,7 +297,7 @@ void DNN::compute_localgradients()
 //		localGradient[layerNo]->print("Local Gradients:");
 }
 
-void DNN::compute_deltas(mat& input,float momentum)
+void DNN::compute_deltas(Mat<elem_type> &input,float momentum)
 {
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
 	{
@@ -310,7 +310,7 @@ void DNN::compute_deltas(mat& input,float momentum)
 	}
 }
 
-void DNN::compute_deltaswithmomentum(mat& input,float momentum)
+void DNN::compute_deltaswithmomentum(Mat<elem_type> &input,float momentum)
 {
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
 	{
@@ -323,7 +323,7 @@ void DNN::compute_deltaswithmomentum(mat& input,float momentum)
 	}
 }
 
-void DNN::compute_deltaswithmomandlayerlr(mat& input,float momentum)
+void DNN::compute_deltaswithmomandlayerlr(Mat<elem_type> &input,float momentum)
 {
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
 	{

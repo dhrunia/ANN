@@ -54,10 +54,10 @@ int main(int argc,char** argv)
 		exit(0);
 	}
 	errorFname = "errors.txt";
-	mat *inputData = new mat();
-	mat *outputData = new mat();
-	mat *batchInput;
-	mat *batchOutput;
+	Mat<elem_type> *inputData = new Mat<elem_type>();
+	Mat<elem_type> *outputData = new Mat<elem_type>();
+	Mat<elem_type> *batchInput;
+	Mat<elem_type> *batchOutput;
 	int nFrames,temp,batchSize,batchesPerEpoch;
 	uvec frameNos,batchFrameNos;
 	nFrames =  ReadData(inpFname,(*inputData));
@@ -81,8 +81,8 @@ int main(int argc,char** argv)
 	else
 		batchesPerEpoch = nFrames/batchSize;
 //	cout<<"batchsize and bathcesperpoch: "<<batchSize<<" and "<<batchesPerEpoch<<endl;
-	batchInput = new mat(nn->inputDimension,batchSize,fill::zeros);
-	batchOutput = new mat(nn->outputDimension,batchSize,fill::zeros);
+	batchInput = new Mat<elem_type>(nn->inputDimension,batchSize,fill::zeros);
+	batchOutput = new Mat<elem_type>(nn->outputDimension,batchSize,fill::zeros);
 	double batchError;
 	int batchSP;
 	ofstream errfh(errorFname);
