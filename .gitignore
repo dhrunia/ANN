@@ -1,3 +1,6 @@
+ANN.layout
+ANN.mk
+Makefile
 ANN.cbp
 main.cpp
 preds1.txt
