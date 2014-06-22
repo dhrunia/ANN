@@ -38,7 +38,7 @@ DNN::DNN(const char *dnnParamsFname)
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
 }
 
-DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname,string fileType)
+DNN::DNN(const char *dnnParamsFname,const char *wtsFname,string fileType)
 { //fileType represents how the data in weights and bias files are to be identified
 
 	paramsFileName = dnnParamsFname;
@@ -59,9 +59,9 @@ DNN::DNN(const char *dnnParamsFname,const char *wtsFname,const char *biasFname,s
 	configure_network();
 //	cout<<"configuring the network completed"<<endl;
 	if(fileType == "raw_ascii")
-		read_weights(wtsFname,biasFname,"raw_ascii");
+		read_weights(wtsFname,"raw_ascii");
 	else if(fileType == "arma_ascii")
-		read_weights(wtsFname,biasFname,"arma_ascii");
+		read_weights(wtsFname,"arma_ascii");
 	else
 		cerr<<"Invalid file type"<<endl;
 //	cout<<"weights and bias initialized from files"<<wtsFname<<" and "<<biasFname<<endl;
@@ -156,10 +156,9 @@ void DNN::initialize_weights()
 //	}
 }
 
-void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileType)
+void DNN::read_weights(const char* wtsFname,string fileType)
 {
 	ifstream wtsfh(wtsFname);
-	ifstream biasfh(biasFname);
 	rowvec tempRowVec = rowvec();
 	char temp[100];
 	if(fileType == "raw_ascii")
@@ -170,10 +169,9 @@ void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileTyp
 			wtsfh.getline(temp,100);
 			wtsfh.getline(temp,100);
 			bias.push_back( new colvec());
-			tempRowVec.load(biasfh,raw_ascii);
-			*(bias[layerNo]) = tempRowVec.t();
-			biasfh.getline(temp,100);
-			biasfh.getline(temp,100);
+			bias[layerNo]->load(wtsfh,raw_ascii);
+			wtsfh.getline(temp,100);
+			wtsfh.getline(temp,100);
 		}
 	else if(fileType == "arma_ascii")
 		for(int layerNo=0;layerNo<nLayers;layerNo++)
@@ -181,9 +179,7 @@ void DNN::read_weights(const char* wtsFname,const char* biasFname,string fileTyp
 			weights.push_back(Mat<elem_type>());
 			weights[layerNo].load(wtsfh,arma_ascii);
 			bias.push_back( new colvec());
-//			tempRowVec.load(biasfh,arma_ascii);
-//			*(bias[layerNo]) = tempRowVec.t();
-			bias[layerNo]->load(biasfh,arma_ascii);
+			bias[layerNo]->load(wtsfh,arma_ascii);
 		}
 }
 
@@ -345,21 +341,21 @@ void DNN::increment_weights()
 	}
 }
 
-void DNN::save_weights(const char *wtsFname,const char *biasFname)
+void DNN::save_weights(const char *wtsFname)
 {
 	ofstream wtsfh(wtsFname);
-	ofstream biasfh(biasFname);
+//	ofstream biasfh(biasFname);
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
 	{
 		if(!(weights[layerNo]).save(wtsfh,arma_ascii))
 			cerr<<"Error in saving weights of layer "<<layerNo<<endl;
 		wtsfh<<endl;
-		if(!bias[layerNo]->save(biasfh,arma_ascii))
+		if(!bias[layerNo]->save(wtsfh,arma_ascii))
 			cerr<<"Error in saving biases of layer "<<layerNo<<endl;
-		biasfh<<endl;
+		wtsfh<<endl;
 	}
 	wtsfh.close();
-	biasfh.close();
+//	biasfh.close();
 }
 
 void DNN::print_weights()

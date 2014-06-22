@@ -9,11 +9,11 @@ int main(int argc,char **argv)
 {
 	Mat<elem_type> input,output;
 	const char *inpFname,*outFname,*wtsFname,*biasFname,*paramsFname,*taskType;
-	if(argc<7)
+	if(argc<5)
 	{
-		cerr<<"5 arguments expected only "<<argc<<" given"<<endl;
+		cerr<<"Atleast 4 arguments are expected only "<<argc<<" given"<<endl;
 		cerr<<"Run the program as follows:"<<endl;
-		cerr<<"./DnnTest <NN params file> <input file> <output file> <weights file> <bias file> <taskType[regression/classification]>"<<endl;
+		cerr<<"./DnnTest <NN params file> <input file> <output file> <weights file> [optional <taskType[regression/classification]>]"<<endl;
 		exit(0);
 	}
 	else
@@ -22,14 +22,16 @@ int main(int argc,char **argv)
 		inpFname = argv[2];
 		outFname = argv[3];
 		wtsFname = argv[4];
-		biasFname = argv[5];
-		taskType = argv[6];
+		if(argc > 5)
+            taskType = argv[5];
+        else
+            taskType = "regression";
 	}
 	ReadData(inpFname,input);
 //	cout<<"Input read"<<endl;
-	DNN *nn = new DNN(paramsFname,wtsFname,biasFname,"arma_ascii");
+	DNN *nn = new DNN(paramsFname,wtsFname,"arma_ascii");
 	cout<<"Predicting output..."<<endl;
-	if(!strcmp(taskType,"classification"))
+	if(!strcmp(taskType,"classification"))  // strcmp returs 0 if the two arguments are equal and hence the negation.
 		nn->gen_output(input,outFname,true);
 	else
 		nn->gen_output(input,outFname);

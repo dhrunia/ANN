@@ -40,7 +40,7 @@ public:
 	int inputDimension;
 	int outputDimension;
 	DNN(const char*);
-	DNN(const char*,const char*,const char*,string);
+	DNN(const char*,const char*,string);
 	void initialize_weights();
 	void configure_network();
 	void read_nnparams();
@@ -56,8 +56,8 @@ public:
 	void gen_output(Mat<elem_type>&,const char*,bool);
 	void compute_deltas(Mat<elem_type>&,float);
 	void increment_weights();
-	void save_weights(const char*,const char*);
-	void read_weights(const char*,const char*,string);
+	void save_weights(const char*);
+	void read_weights(const char*,string);
 	void print_weights();
 };
 

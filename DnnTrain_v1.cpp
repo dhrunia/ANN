@@ -19,17 +19,16 @@ int main(int argc,char** argv)
 	clock_t startTime,endTime;
 	startTime = clock();
 //	cout<<"number of arguments passed: "<<argc<<endl;
-	if(!(argc<8))
+	if(!(argc<7))
 	{
 		paramsFname = argv[1];
 		inpFname = argv[2];
 		outFname = argv[3];
 		weightsFname = argv[4];
-		biasFname = argv[5];
 //		nEpochs=lexical_cast<int>(argv[5]);
 //		momentum = lexical_cast<float>(argv[6]);
-		str_to_type(argv[6],nEpochs);
-		str_to_type(argv[7],momentum);
+		str_to_type(argv[5],nEpochs);
+		str_to_type(argv[6],momentum);
 //		cout<<"inp_fname: "<<inpFname<<endl;
 //		cout<<"out_fname: "<<outFname<<endl;
 //		cout<<"no.of epochs:"<<nEpochs<<endl;
@@ -48,9 +47,8 @@ int main(int argc,char** argv)
 		cerr<<"argument 2: Input data file name"<<endl;
 		cerr<<"argument 3: Output data file name"<<endl;
 		cerr<<"argument 4: Weights file name"<<endl;
-		cerr<<"argument 5: bias file name"<<endl;
-		cerr<<"argument 6: Number of Epochs"<<endl;
-		cerr<<"argument 7: Momentum"<<endl;
+		cerr<<"argument 5: Number of Epochs"<<endl;
+		cerr<<"argument 6: Momentum"<<endl;
 		exit(0);
 	}
 	errorFname = "errors.txt";
@@ -123,7 +121,7 @@ int main(int argc,char** argv)
 	cout<<endl;
 	cout<<"Training completed"<<endl;
 //	nn->print_weights();
-	nn->save_weights(weightsFname,biasFname);
+	nn->save_weights(weightsFname);
 	endTime = clock();
 	timeElapsed = (endTime-startTime)/((double)CLOCKS_PER_SEC*60);
 	cout << fixed << showpoint << setprecision(2);
