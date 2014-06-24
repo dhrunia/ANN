@@ -9,8 +9,6 @@
 using namespace arma;
 using namespace std;
 
-typedef double elem_type;
-
 class DNN
 {
 	vector< Mat<elem_type> > weights;

@@ -6,9 +6,18 @@
 #include<vector>
 #include<string>
 #include<sstream>
+#include<iomanip>
 
 using namespace std;
 using namespace arma;
+
+typedef double elem_type;
+
+typedef struct{
+    int width;
+    int height;
+    elem_type **values;
+}matrix;
 
 template <typename T>
 void split(string s,vector<T> &vec)
@@ -106,6 +115,56 @@ int ReadData(const char *fname,mat &Data)
 		fh.close();
 	}
 	return nPatterns;
+}
+
+
+int myReadData(const char *fname,matrix &Data)
+{	// Reads the data from the file given as input into a matrix and returns the matrix
+
+	ifstream fh(fname);
+	int nPatterns,nFeatures;
+	string line;
+	vector<elem_type> pattern;
+//	cout<<"Reading data from file: "<<fname<<endl;
+	if(fh.is_open())
+	{
+		nPatterns = no_of_lines(fname);
+		getline(fh,line);
+		str_to_vec(line,pattern);
+		nFeatures = pattern.size();
+		Data.width = nFeatures;
+		Data.height = nPatterns;
+//		cout<<"no of patterns: "<<nPatterns<<endl;
+//		cout<<"no of features per pattern: "<<nFeatures<<endl;
+//		Data.set_size(nPatterns,nFeatures);
+        Data.values = new elem_type*[nFeatures];
+        for(int i=0;i<nFeatures;i++)
+            Data.values[i] = new elem_type[nPatterns];
+		vector<elem_type> linef; // a vector of floats representing a row of input patterns
+		str_to_vec(line,linef);
+		for(int j=0;j<nFeatures;j++)
+			Data.values[j][0] = linef[j];
+		for(int i=1;getline(fh,line);i++)
+		{
+			linef.clear();
+//			cout<<line<<endl;
+			split(line,linef);
+			for(int j=0;j<nFeatures;j++)
+				Data.values[j][i] = linef[j];
+		}
+		fh.close();
+	}
+	return nPatterns;
+}
+
+void print_matrix(matrix &m)
+{
+    for(int i = 0;i<m.width;i++)
+    {
+        for(int j=0;j<m.height;j++)
+            cout<<fixed<<showpoint<<setprecision(4)<<m.values[i][j]<<" ";
+        cout<<endl;
+    }
 }
 
 //void gen_batchdata(mat &input,mat &output,mat &batchInput,mat &batchOutput,int batchSize)
