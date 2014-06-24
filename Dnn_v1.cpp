@@ -253,11 +253,13 @@ void DNN::gen_output(Mat<elem_type> &input,const char *outFileName,bool one_hot=
 double DNN::compute_outputerror(Mat<elem_type> &T)
 { // T is the desired output
 	double mse;
+	int nFrames;
 	rowvec temp;
+	nFrames = T.n_cols;
 	(*outputError) = T - (*(output[nLayers-1]));
 //	mse = accu(square(*(outputError))) / batchSize;
 	temp = sum(sum(square(*(outputError))) / sum(square(T)));
-	mse = sum(temp) / batchSize;
+	mse = sum(temp) / nFrames;
 	return mse;
 }
 
