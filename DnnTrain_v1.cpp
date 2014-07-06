@@ -75,13 +75,17 @@ int main(int argc,char** argv)
 		exit(0);
 	}
 	//shuffle the data
-	frameNos = randi<uvec>(nFrames,distr_param(0,nFrames-1));
+//	frameNos = randi<uvec>(nFrames,distr_param(0,nFrames-1));
+    frameNos = linspace<uvec>(0,nFrames-1,nFrames);
+    frameNos = shuffle(frameNos);
 	temp_mat = new Mat<elem_type>();
 	*temp_mat = inputData->cols(frameNos);
+	inputData->reset();
 	delete inputData;
     inputData = temp_mat;
     temp_mat = new Mat<elem_type>();
     *temp_mat = outputData->cols(frameNos);
+    outputData->reset();
     delete outputData;
     outputData = temp_mat;
 //	cout<<InputData.submat(0,0,2,14);
@@ -89,7 +93,7 @@ int main(int argc,char** argv)
 //	cout<<"Dim. of output data :"<<outputData->n_rows<<"x"<<outputData->n_cols<<endl;
 //	cout<<outputData.submat(0,0,4,2);
 	DNN *nn = new DNN(paramsFname);
-//	DNN *nn = new DNN(paramsFname,weightsFname,biasFname);
+//	DNN *nn = new DNN(paramsFname,weightsFname,"arma_ascii");
 	batchSize = nn->batchSize;
 //	cout<<"batchsize and bathcesperpoch: "<<batchSize<<" and "<<batchesPerEpoch<<endl;
 	batchInput = new Mat<elem_type>(nn->inputDimension,batchSize,fill::zeros);
@@ -98,7 +102,7 @@ int main(int argc,char** argv)
 	ofstream valErrfh(valErrFname);
 	if(!errfh.is_open())
 		cout<<"unable to open file "<<errorFname<<endl;
-    nFramesTrain = 0.8*nFrames;
+    nFramesTrain = 0.75*nFrames;
     nFramesValid = nFrames - nFramesTrain;
 //    cout<<"nFramesTrain: "<<nFramesTrain<<endl;
 //    cout<<"nFramesValid: "<<nFramesValid<<endl;
@@ -108,8 +112,8 @@ int main(int argc,char** argv)
 		batchesPerEpoch = nFramesTrain/batchSize;
     validationSetInput = new Mat<elem_type>();
     validationSetOutput = new Mat<elem_type>();
-    *validationSetInput = inputData->submat(0,nFramesTrain-1,inputData->n_rows - 1,nFrames-1);
-    *validationSetOutput = outputData->submat(0,nFramesTrain-1,outputData->n_rows - 1,nFrames-1);
+    *validationSetInput = inputData->submat(0,nFramesTrain,inputData->n_rows - 1,nFrames-1);
+    *validationSetOutput = outputData->submat(0,nFramesTrain,outputData->n_rows - 1,nFrames-1);
 //    cout<<"validation data copied"<<endl;
 	arma_rng::set_seed_random();
 	validError = numeric_limits<double>::max();
@@ -117,7 +121,9 @@ int main(int argc,char** argv)
 	for(int epochNo =0;epochNo<nEpochs;epochNo++)
 	{
         batchError=0;
-		frameNos = randi<uvec>(nFramesTrain-(nFramesTrain%batchSize),distr_param(0,nFramesTrain-1));
+//		frameNos = randi<uvec>(nFramesTrain-(nFramesTrain%batchSize),distr_param(0,nFramesTrain-1));
+		frameNos = linspace<uvec>(0,nFramesTrain-1,nFramesTrain);
+        frameNos = shuffle(frameNos);
 //		frameNos << 1 << 4 << 0;
 //		cout<<"Epoch: "<<epochNo<<""<<endl;
 		for(int batchNo=0;batchNo<batchesPerEpoch;batchNo++)
@@ -165,20 +171,20 @@ int main(int argc,char** argv)
             else
                 validCount = 0;
 		}
-
+        nn->save_weights(weightsFname);
 		cout<<".";
 		cout.flush();
 	}
 	cout<<endl;
 	cout<<"Training completed"<<endl;
 //	nn->print_weights();
-	nn->save_weights(weightsFname);
 	endTime = clock();
 	timeElapsed = (endTime-startTime)/((double)CLOCKS_PER_SEC*60);
 	cout << fixed << showpoint << setprecision(2);
 	cout<<"Time elapsed: "<< timeElapsed <<" minutes" <<endl;
 	errfh.close();
 }
+
 
 
 

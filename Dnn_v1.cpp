@@ -90,11 +90,11 @@ void DNN::configure_network()
 		//intialize layer wise learning rate
 		if(layerNo == nLayers)
 		{
-			layerLr.push_back(1.0/(totalUnits)); // OutLayer Low Learning Rate
+			layerLr.push_back(1.0/(25*totalUnits)); // OutLayer Low Learning Rate
 		}
 		else
 		{
-			layerLr.push_back(1.0/(unitsInLayer[layerNo-1]));
+			layerLr.push_back(1.0/(25*unitsInLayer[layerNo-1]));
 		}
 //		cout<<"lr of layer "<<layerNo-1<<": "<<layerLr[layerNo-1]<<endl;
 	}
@@ -181,6 +181,7 @@ void DNN::read_weights(const char* wtsFname,string fileType)
 			bias.push_back( new colvec());
 			bias[layerNo]->load(wtsfh,arma_ascii);
 		}
+    wtsfh.close();
 }
 
 void DNN::compute_output(Mat<elem_type> &input)
@@ -241,7 +242,17 @@ void DNN::gen_output(Mat<elem_type> &input,const char *outFileName,bool one_hot=
 			row_temp = output[nLayers-1]->row(i);
 			row_temp.max(maxIdx);
 			maxIdx += 1;
-			wtsfh<<maxIdx<<endl;
+			for(int j=1;j<=unitsInLayer[nLayers];j++)
+			{
+                if(j != maxIdx)
+                    wtsfh<<0;
+                else
+                    wtsfh<<1;
+                if(j == unitsInLayer[nLayers] )
+                    wtsfh<<endl;
+                else
+                    wtsfh<<" ";
+			}
 		}
 		wtsfh.close();
 	}

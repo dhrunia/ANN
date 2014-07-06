@@ -6,12 +6,14 @@ ARMADILLO :
 armadillo is a c++ linear algebra library.
 Download and install armadillo from http://arma.sourceforge.net/download.html to be able to compile and run the ANN code. Installation instructions can be found in the readme of armadillo package.
 
+Note: armadillo can work without any external libraries but the performace is much better when using external libraries. Install LAPACK,OPENBLAS,ARPACK,ATLAS for best performance. Make sure to link these library files while linking. An example is given in the compiling and executing section.
 ############ ANN MODULES #####################
 
 Dnn_v*.cpp is the implementation of neural network class.
 DnnTrain_v*.cpp is the  program which creates and trains the DNN class.
 DnnTest.cpp can be used to generate the output for a test data using the weights saved by training.
 utils.cpp contains some simple functions like ReadData etc., used by above modules.
+dnn.h is the header file containing declarations for DNN class etc.
 
 Note: * in Dnn_v* and DnnTrain_v* is the version number.
 
@@ -19,7 +21,17 @@ Note: * in Dnn_v* and DnnTrain_v* is the version number.
 
 step1:compile the program as follows:
 
+without external libraries:
 g++ -O2 -larmadillo -o DnnTrain_v* DnnTrain_v*.cpp
+
+with external libraries like openblas:
+g++ DnnTrain_v*.cpp -llapack -lopenblas -o DnnTrain_v*
+
+Note: If libraries are not installed in default locations then use -L option to add the library location. For example if openblas is installed in /home/user/openblas then run it as:
+
+g++ DnnTrain_v*.cpp -L /home/user/openblas -llapack -lopenblas -o DnnTrain_v*
+
+Also make sure /home/user/openblas is in LD_LIB_PATH environmet variable to run the object file.
 
 step2:execute the program as follows:
 
@@ -28,12 +40,19 @@ step2:execute the program as follows:
 Ex: ./DnnTrain_v* params train.lpcc train.frm weights.txt 60 0.3
 
 parameters file:
-
+-------------------------------------------------------------------------------------------------------
 This has all the parameters required to intialize the DNN class. Its structure is as follows
 <units in input layer> <units in first layer> <units in second hidden layer> ... <units in output layer>
 <output function type of first hidden layer> ... <output function type of output layer>
 <batchsize> [<batches per epoch> optional]
 <learning rate>
+-------------------------------------------------------------------------------------------------------
+
+Availabe output function types:
+Sigmoid : s or S
+Hyperbolic Tangent : N or n
+Linear : L or l
+Soft Max : SM or sm
 
 An example params file:
 15 100 100 3

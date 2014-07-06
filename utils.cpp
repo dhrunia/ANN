@@ -16,7 +16,7 @@ typedef double elem_type;
 typedef struct{
     int width;
     int height;
-    elem_type **values;
+    elem_type *elements;
 }matrix;
 
 template <typename T>
@@ -122,35 +122,43 @@ int myReadData(const char *fname,matrix &Data)
 {	// Reads the data from the file given as input into a matrix and returns the matrix
 
 	ifstream fh(fname);
-	int nPatterns,nFeatures;
+	int nPatterns,nFeatures,colIdx,rowIdx;
 	string line;
 	vector<elem_type> pattern;
-//	cout<<"Reading data from file: "<<fname<<endl;
+	//	cout<<"Reading data from file: "<<fname<<endl;
 	if(fh.is_open())
 	{
 		nPatterns = no_of_lines(fname);
 		getline(fh,line);
 		str_to_vec(line,pattern);
 		nFeatures = pattern.size();
-		Data.width = nFeatures;
-		Data.height = nPatterns;
-//		cout<<"no of patterns: "<<nPatterns<<endl;
-//		cout<<"no of features per pattern: "<<nFeatures<<endl;
-//		Data.set_size(nPatterns,nFeatures);
-        Data.values = new elem_type*[nFeatures];
-        for(int i=0;i<nFeatures;i++)
-            Data.values[i] = new elem_type[nPatterns];
+		Data.width = nPatterns;
+		Data.height = nFeatures;
+		//		cout<<"no of patterns: "<<nPatterns<<endl;
+		//		cout<<"no of features per pattern: "<<nFeatures<<endl;
+		//		Data.set_size(nPatterns,nFeatures);
+		Data.elements = new elem_type[nFeatures*nPatterns];
 		vector<elem_type> linef; // a vector of floats representing a row of input patterns
 		str_to_vec(line,linef);
+		rowIdx = 0;
+		colIdx = 0;
 		for(int j=0;j<nFeatures;j++)
-			Data.values[j][0] = linef[j];
+		{
+             		Data.elements[rowIdx*nPatterns + colIdx] = linef[j];
+			rowIdx++;
+		}
+		colIdx++;
 		for(int i=1;getline(fh,line);i++)
 		{
+			rowIdx = 0;
 			linef.clear();
-//			cout<<line<<endl;
+			//			cout<<line<<endl;
 			split(line,linef);
-			for(int j=0;j<nFeatures;j++)
-				Data.values[j][i] = linef[j];
+			for(int j=0;j<nFeatures;j++){
+				Data.elements[rowIdx*nPatterns + colIdx] = linef[j];
+				rowIdx++;
+			}
+			colIdx++;
 		}
 		fh.close();
 	}
@@ -159,10 +167,10 @@ int myReadData(const char *fname,matrix &Data)
 
 void print_matrix(matrix &m)
 {
-    for(int i = 0;i<m.width;i++)
+    for(int i = 0;i<m.height;i++)
     {
-        for(int j=0;j<m.height;j++)
-            cout<<fixed<<showpoint<<setprecision(4)<<m.values[i][j]<<" ";
+        for(int j=0;j<m.width;j++)
+            cout<<fixed<<showpoint<<setprecision(4)<<m.elements[i*m.width + j]<<" ";
         cout<<endl;
     }
 }
