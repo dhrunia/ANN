@@ -20,7 +20,7 @@ int main(int argc,char** argv)
 	int nFrames,temp,batchSize,batchesPerEpoch,nFramesTrain,nFramesValid,batchSP,nEpochs;
 	int validCount = 0; // keeps a count of number of times validation error increased from previous validation error contiguously
 	float momentum;
-	double timeElapsed,batchError,prevValidError,validError;
+	double timeElapsed,batchError,prevValidError,validError,prevError1,prevError2;
 	clock_t startTime,endTime;
 	uvec frameNos,batchFrameNos;
     Mat<elem_type> *inputData = new Mat<elem_type>();
@@ -140,12 +140,29 @@ int main(int argc,char** argv)
 //			cout<<"error computed"<<endl;
 			nn->compute_localgradients();
 //			cout<<"local gradients computed"<<endl;
+            nn->compute_gradients(*batchInput);
 //			nn->compute_deltas(*batchInput);
-			nn->compute_deltaswithmomandlayerlr(*batchInput,momentum);
+//			nn->compute_deltaswithmomandlayerlr(*batchInput,momentum);
+
+            if(abs(prevError1-prevError2) < 1e-5 && epochNo >= 2)
+                nn->compute_deltaswithdlrandmom(0.99);
+//                nn->compute_deltaswithmomandlayerlr(*batchInput,0.9);
+            else if(abs(prevError1-prevError2) < 1e-4 && epochNo >= 2)
+                nn->compute_deltaswithdlrandmom(0.9);
+//                nn->compute_deltaswithmomandlayerlr(*batchInput,0.7);
+            else if(abs(prevError1-prevError2) < 1e-3 && epochNo >= 2)
+                nn->compute_deltaswithdlrandmom(0.8);
+//                nn->compute_deltaswithmomandlayerlr(*batchInput,0.5);
+            else
+                nn->compute_deltaswithdlrandmom(momentum);
+//                nn->compute_deltaswithmomandlayerlr(*batchInput,momentum);
+
 //			cout<<"deltas computed"<<endl;
 			nn->increment_weights();
 //			cout<<"weights incremented"<<endl;
 		}
+		prevError2 = prevError1;
+		prevError1 = batchError;
 //		cout<<"Error: "<<batchError<<endl;
 		errfh<<batchError<<endl;
 

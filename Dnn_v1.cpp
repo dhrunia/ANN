@@ -77,29 +77,53 @@ void DNN::configure_network()
 	{
 		// create the outputs matrix of each layer say "h" [dim(h) x batchsize]
 		output.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the weights matrix of each layer say "h" [dim(h) x dim(h-1)]
+		weights.push_back(randu< Mat<elem_type> >(unitsInLayer[layerNo],unitsInLayer[layerNo-1]));
 		//create the bias' vector of units in each layer say "h" [dim(h)]
-		bias.push_back(new colvec(unitsInLayer[layerNo],fill::zeros));
+		bias.push_back(new Col<elem_type>());
+		bias[layerNo-1]->randu(unitsInLayer[layerNo]);
+		prevBiasGradient.push_back(new Col<elem_type>(unitsInLayer[layerNo],fill::zeros));
+		curBiasGradient.push_back(new Col<elem_type>(unitsInLayer[layerNo],fill::zeros));
 		//create the matrix for first derviative of each layer say "h" [dim(h) x batchsize]
 		firstDerivative.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
 		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
 		localGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
+		prevGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
+		curGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
 		//create the delta weights matrix of each layer say "h" [dim(h) x dim(h-1)]
 		deltaWeights.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
 		//create the delta bias matrix of units in each layer say "h"[dim(h)]
-		deltaBias.push_back(new colvec(unitsInLayer[layerNo],fill::zeros));
+		deltaBias.push_back(new Col<elem_type>(unitsInLayer[layerNo],fill::zeros));
 		//intialize layer wise learning rate
 		if(layerNo == nLayers)
 		{
+			//learning rate for all connections going into units in output layer
 			layerLr.push_back(1.0/(25*totalUnits)); // OutLayer Low Learning Rate
+
+			//learning rate for each connection going into units in output layer
+			lrPerCon.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
+			*(lrPerCon[layerNo-1]) = *lrPerCon[layerNo-1] + layerLr[layerNo-1];
 		}
 		else
 		{
+			//learning rate for each connection going into units in a hidden layer
 			layerLr.push_back(1.0/(25*unitsInLayer[layerNo-1]));
+
+			//learning rate for each connection going into units in a hidden layer
+			lrPerCon.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
+			*(lrPerCon[layerNo-1]) = *(lrPerCon[layerNo-1]) + layerLr[layerNo-1];
+
 		}
 //		cout<<"lr of layer "<<layerNo-1<<": "<<layerLr[layerNo-1]<<endl;
+        lrgf.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::ones));
+        biasgf.push_back(new Col<elem_type>(unitsInLayer[layerNo],fill::ones));
 	}
+
 	//create the output error matrix for output layer say "o" [dim(o) x batchsize]
 	outputError = new Mat<elem_type>(unitsInLayer[nLayers],batchSize,fill::zeros);
+	firstEpoch = true;
 }
 
 void DNN::read_nnparams()
@@ -139,11 +163,11 @@ void DNN::initialize_weights()
 	float maxweight;
 	arma_rng::set_seed(time(NULL));
 
-	for(int layerNo = 0; layerNo<nLayers; layerNo++)
-	{
-		weights.push_back(randu< Mat<elem_type> >(unitsInLayer[layerNo+1],unitsInLayer[layerNo]));
-		*(bias[layerNo]) = randu< Mat<elem_type> >(unitsInLayer[layerNo+1]);
-	}
+//	for(int layerNo = 0; layerNo<nLayers; layerNo++)
+//	{
+//		weights.push_back(randu< Mat<elem_type> >(unitsInLayer[layerNo+1],unitsInLayer[layerNo]));
+//		*(bias[layerNo]) = randu< Mat<elem_type> >(unitsInLayer[layerNo+1]);
+//	}
 	for(int layerNo=0; layerNo<nLayers; layerNo++)
 	{
 		maxweight=(float)3/sqrt((double)unitsInLayer[layerNo]);
@@ -306,6 +330,57 @@ void DNN::compute_localgradients()
 //		localGradient[layerNo]->print("Local Gradients:");
 }
 
+void DNN::compute_gradients(Mat<elem_type> &input)
+{
+    for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+        *(prevGradient[layerNo]) = *(curGradient[layerNo]);
+        *(prevBiasGradient[layerNo]) = *(curBiasGradient[layerNo]);
+
+		//gradient of error w.r.t weights
+		if(layerNo==0)
+			*(curGradient[layerNo]) = *(localGradient[layerNo]) * input.t();
+		else
+			*(curGradient[layerNo]) = *(localGradient[layerNo]) * (output[layerNo-1])->t();
+
+        //gradient of error w.r.t bias of each unit
+        *(curBiasGradient[layerNo]) = sum(*(localGradient[layerNo]),1);
+	}
+}
+
+void DNN::adapt_lrgf()
+{
+    Mat<elem_type> tempWts;
+    Col<elem_type> tempBias;
+    if(!firstEpoch)
+    for(int layerNo=0;layerNo<nLayers;layerNo++)
+    {
+        tempWts = (*(prevGradient[layerNo])) % (*(curGradient[layerNo]));
+        tempBias = (*(prevBiasGradient[layerNo])) % (*(curBiasGradient[layerNo]));
+
+        for(int i=0;i<tempWts.n_rows;i++)
+            for(int j=0;j<tempWts.n_cols;j++)
+                if(tempWts(i,j)>0)
+                {
+                    (*lrgf[layerNo])(i,j) += 0.05;
+//                    cout<<"increased"<<endl;
+                }
+                else
+                {
+                    (*lrgf[layerNo])(i,j) *= 0.95;
+//                    cout<<"decreased"<<endl;
+                }
+        for(int i=0;i<tempBias.n_rows;i++)
+            if(tempBias(i)>0)
+                (*(biasgf[layerNo]))(i) += 0.05;
+            else
+                (*(biasgf[layerNo]))(i) *= 0.95;
+    }
+    else
+        firstEpoch = false;
+
+}
+
 void DNN::compute_deltas(Mat<elem_type> &input,float momentum)
 {
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
@@ -344,6 +419,21 @@ void DNN::compute_deltaswithmomandlayerlr(Mat<elem_type> &input,float momentum)
 		*(deltaBias[layerNo]) = momentum * (*(deltaBias[layerNo])) + (layerLr[layerNo]/batchSize) * sum(*(localGradient[layerNo]),1);
 	}
 }
+
+void DNN::compute_deltaswithdlrandmom(float momentum)
+{
+    adapt_lrgf();
+	for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+		if(layerNo==0)
+			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
+		else
+			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
+
+		*(deltaBias[layerNo]) = momentum * (*(deltaBias[layerNo])) + (layerLr[layerNo]/batchSize) * (*(biasgf[layerNo]) % (*(curBiasGradient[layerNo])));
+	}
+}
+
 
 void DNN::increment_weights()
 {

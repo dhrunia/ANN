@@ -1,3 +1,4 @@
+#include,>
 class TrainingAlgorithm
 {
     private:
@@ -12,3 +13,5 @@ void TrainingAlgorithm::golden_section_search()
 {
 
 }
+
+
