@@ -1,6 +1,9 @@
 #include<iostream>
-#include"Dnn_v1.cpp"
 #include<armadillo>
+#include"dnn.h"
+#include"Dnn_v1.cpp"
+#include"utils.cpp"
+#include"params.cpp"
 
 using namespace std;
 using namespace arma;
@@ -29,9 +32,10 @@ int main(int argc,char **argv)
 	}
 	ReadData(inpFname,input);
 //	cout<<"Input read"<<endl;
-	DNN *nn = new DNN(paramsFname,wtsFname,"arma_ascii");
+	Params nnParams(paramsFname);
+	DNN *nn = new DNN(nnParams,wtsFname,"arma_ascii");
 	cout<<"Predicting output..."<<endl;
-	if(!strcmp(taskType,"classification"))  // strcmp returs 0 if the two arguments are equal and hence the negation.
+	if(!strcmp(taskType,"cl"))  // strcmp returs 0 if the two arguments are equal and hence the negation.
 		nn->gen_output(input,outFname,true);
 	else
 		nn->gen_output(input,outFname);

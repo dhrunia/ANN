@@ -1,6 +1,8 @@
 //#include<algorithm>
 //#include<cstdlib>
 //#include<ctime>
+#ifndef UTILS_H_
+#define UTILS_H_
 
 #include<armadillo>
 #include<vector>
@@ -10,8 +12,6 @@
 
 using namespace std;
 using namespace arma;
-
-typedef double elem_type;
 
 typedef struct{
     int width;
@@ -81,6 +81,39 @@ void str_to_type(string str,T &val)
 	stringstream ss(str);
 	ss>>val;
 }
+
+
+//void read_params(const char *paramsFname)
+//{
+//	ifstream fh(paramsFname);
+//	string line;
+//	vector<int> temp;
+//	for(int lineNo=1;getline(fh,line);lineNo++)
+//	{
+//		switch(lineNo)
+//		{
+//		case 1:
+//			str_to_vec(line,unitsInLayer);
+//			break;
+//		case 2:
+//			str_to_vec(line,outFnType);
+//			break;
+//		case 3:
+//			str_to_vec(line,temp);
+//			batchSize = temp[0];
+//			if(temp.size()==2)
+//				batchesPerEpoch = temp[1];
+//			else
+//				batchesPerEpoch = 0;
+//			break;
+//		case 4:
+//			str_to_type(line,eta);
+//			break;
+//		}
+//	}
+//	nLayers = outFnType.size();
+////	cout<<"no.of layers: "<<nLayers<<endl;
+//}
 
 int ReadData(const char *fname,mat &Data)
 {	// Reads the data from the file given as input into a matrix and returns the matrix
@@ -175,32 +208,7 @@ void print_matrix(matrix &m)
     }
 }
 
-//void gen_batchdata(mat &input,mat &output,mat &batchInput,mat &batchOutput,int batchSize)
-//{
-//	//picks random frames from inputdata and their corresponding output
-//	//and generates a matrices for batch input and output
-//
-//	int frameNo;
-//	int nFrames = input.n_cols;
-////	srand(time(NULL));
-//	for(int i=0;i<batchSize;i++)
-//	{
-//		frameNo = rand()%nFrames;
-////		cout<<frameNo<<endl;
-//		batchInput.col(i) = input.col(frameNo);
-//		batchOutput.col(i) = output.col(frameNo);
-//	}
-////	cout<<endl;
-//}
-
-//template<typename T>
-//void get_shuffled_framenums(T &frameNos,int batchSize,int nPatterns)
-//{
-//	for(int i=0;i<batchSize;i++)
-//	{
-//		frameNos[i] = rand()%nPatterns;
-//	}
-//}
+#endif
 
 
 

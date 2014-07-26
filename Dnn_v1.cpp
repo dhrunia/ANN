@@ -5,18 +5,16 @@
 #include<vector>
 #include<ctime>
 #include<cmath>
-#include "utils.cpp"
+//#include "utils.cpp"
 #include "dnn.h"
 
 using namespace std;
 using namespace arma;
 
 
-DNN::DNN(const char *dnnParamsFname)
+DNN::DNN(Params &nnParams)
 {
-	paramsFileName = dnnParamsFname;
-//	cout<<"parameters file name: "<<paramsFileName<<endl;
-	read_nnparams();
+	read_nnparams(nnParams);
 //	cout<<"units in each layer: ";
 //	print_vec(unitsInLayer);
 //	cout<<"output function of units in each layer: ";
@@ -38,12 +36,10 @@ DNN::DNN(const char *dnnParamsFname)
 	_Bby2A=_B/(2*_A); //0.1943 Tanh Parameters
 }
 
-DNN::DNN(const char *dnnParamsFname,const char *wtsFname,string fileType)
+DNN::DNN(Params &nnParams,const char *wtsFname,string fileType)
 { //fileType represents how the data in weights and bias files are to be identified
 
-	paramsFileName = dnnParamsFname;
-//	cout<<"parameters file name: "<<paramsFileName<<endl;
-	read_nnparams();
+	read_nnparams(nnParams);
 //	cout<<"units in each layer: ";
 //	print_vec(unitsInLayer);
 //	cout<<"output function of units in each layer: ";
@@ -88,10 +84,10 @@ void DNN::configure_network()
 		firstDerivative.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
 		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
 		localGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
-		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
-		prevGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
-		//create the local gradients matrix of each layer say "h" [dim(h) x batchsize]
-		curGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],batchSize,fill::zeros));
+		//create the  gradients matrix of each layer say "h" [dim(h) x dim(h-1)]
+		prevGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
+		//create the gradients matrix of each layer say "h" [dim(h) x (h-1)]
+		curGradient.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
 		//create the delta weights matrix of each layer say "h" [dim(h) x dim(h-1)]
 		deltaWeights.push_back(new Mat<elem_type>(unitsInLayer[layerNo],unitsInLayer[layerNo-1],fill::zeros));
 		//create the delta bias matrix of units in each layer say "h"[dim(h)]
@@ -126,34 +122,13 @@ void DNN::configure_network()
 	firstEpoch = true;
 }
 
-void DNN::read_nnparams()
+void DNN::read_nnparams(Params &nnParams)
 {
-	ifstream fh(paramsFileName);
-	string line;
-	vector<int> temp;
-	for(int lineNo=1;getline(fh,line);lineNo++)
-	{
-		switch(lineNo)
-		{
-		case 1:
-			str_to_vec(line,unitsInLayer);
-			break;
-		case 2:
-			str_to_vec(line,outFnType);
-			break;
-		case 3:
-			str_to_vec(line,temp);
-			batchSize = temp[0];
-			if(temp.size()==2)
-				batchesPerEpoch = temp[1];
-			else
-				batchesPerEpoch = 0;
-			break;
-		case 4:
-			str_to_type(line,eta);
-			break;
-		}
-	}
+	unitsInLayer = nnParams.unitsInLayer;
+	outFnType = nnParams.outFnType;
+	batchSize = nnParams.batchSize;
+	batchesPerEpoch = nnParams.batchesPerEpoch;
+	eta = nnParams.eta;
 	nLayers = outFnType.size();
 //	cout<<"no.of layers: "<<nLayers<<endl;
 }
@@ -161,7 +136,7 @@ void DNN::read_nnparams()
 void DNN::initialize_weights()
 {
 	float maxweight;
-	arma_rng::set_seed(time(NULL));
+//	arma_rng::set_seed(time(NULL));
 
 //	for(int layerNo = 0; layerNo<nLayers; layerNo++)
 //	{
@@ -227,6 +202,26 @@ void DNN::compute_output(Mat<elem_type> &input)
 //	output[nLayers-1]->print("output:");
 }
 
+void DNN::compute_output(Mat<elem_type> &input,vector< Mat<elem_type> > &weights,
+						 vector< Col<elem_type> > &bias,vector< Mat<elem_type> > &output)
+{
+	Mat<elem_type> activation;
+	activation=weights[0]*input;
+	activation.each_col() += bias[0];
+//	cout<<"activation values of layer 0 computed"<<endl;
+	output_function(activation,0,output[0]);
+//	cout<<"outputs of layer 0 computed"<<endl;
+	for(int layerNo=1; layerNo<nLayers; layerNo++)
+	{
+		activation=weights[layerNo] * output[layerNo - 1]; //compute the activation value of each unit
+		activation.each_col() += bias[layerNo];
+//		cout<<"activation values of layer "<<layerNo<<" computed"<<endl;
+		output_function(activation,layerNo,output[layerNo]); //apply the output function to the activation value of each unit
+//		cout<<"outputs of layer "<<layerNo<<" computed"<<endl;
+	}
+//	output[nLayers-1]->print("output:");
+}
+
 void DNN::output_function(Mat<elem_type> &act,int layerNo)
 { // calculates the output given the activation values and the type(outFnType[layerNo]) of output function
 	if("L"== outFnType[layerNo] || "l"== outFnType[layerNo])
@@ -245,6 +240,28 @@ void DNN::output_function(Mat<elem_type> &act,int layerNo)
 	else
 	{
 		cout<<" Such a output function is not implemented"<<endl;
+		exit(1);
+	}
+}
+
+void DNN::output_function(Mat<elem_type> &act,int layerNo,Mat<elem_type> &temp_output)
+{ // calculates the output given the activation values and the type(outFnType[layerNo]) of output function
+	if("L"== outFnType[layerNo] || "l"== outFnType[layerNo])
+		 temp_output = act;
+	else if("N"== outFnType[layerNo] || "n"== outFnType[layerNo])
+		temp_output = _A * tanh(_B*act);
+	else if("S"== outFnType[layerNo] || "s"== outFnType[layerNo])
+		temp_output = 1/(1+_A*exp((-1*_B)*act));
+	else if("SM" == outFnType[layerNo] || "sm" == outFnType[layerNo])
+	{
+		rowvec sum_rvec; // sum of all the outputs of the given layer for all frames in a batch
+		temp_output = exp(act);
+		sum_rvec = sum(temp_output);
+		temp_output.each_row() /= sum_rvec;
+	}
+	else
+	{
+		cout<<" Such an output function is not implemented"<<endl;
 		exit(1);
 	}
 }
@@ -293,8 +310,21 @@ double DNN::compute_outputerror(Mat<elem_type> &T)
 	nFrames = T.n_cols;
 	(*outputError) = T - (*(output[nLayers-1]));
 //	mse = accu(square(*(outputError))) / batchSize;
-	temp = sum(sum(square(*(outputError))) / sum(square(T)));
+	temp = sum(square(*(outputError))) / sum(square(T));
+//	cout<<"temp: "<<temp<<endl;
 	mse = sum(temp) / nFrames;
+	return mse;
+}
+
+double DNN::compute_outputerror(Mat<elem_type> &T,Mat<elem_type> &Y,Mat<elem_type> &outputError)
+{ // T is the desired output and Y is the actual output
+	double mse;
+	int nFrames;
+//	Mat<elem_type> *error = new Mat<elem_type>();
+	nFrames = T.n_cols;
+	outputError = T - Y;
+	mse = sum(sum(square(outputError)));
+	mse = mse / nFrames;
 	return mse;
 }
 
@@ -308,6 +338,23 @@ void DNN::compute_firstderivative(int layerNo)
 		(*(firstDerivative[layerNo])) = _B * (*output[layerNo]) % (1 - (*output[layerNo]));
 	else if("SM"== outFnType[layerNo] || "sm"== outFnType[layerNo])
 			(*(firstDerivative[layerNo])) = (*output[layerNo]) % (1 - (*output[layerNo]));
+	else
+	{
+		cout<<"First derivative of such a output function is not implemented"<<endl;
+		exit(1);
+	}
+}
+
+void DNN::compute_firstderivative(int layerNo,Mat<elem_type> &firstDerivative,vector< Mat<elem_type> > &output)
+{
+	if("L"== outFnType[layerNo] || "l"== outFnType[layerNo])
+		 firstDerivative.ones(output[layerNo].n_rows,output[layerNo].n_cols);
+	else if("N"== outFnType[layerNo] || "n"== outFnType[layerNo])
+		firstDerivative = _Bby2A* (_A - output[layerNo]) % (_A + output[layerNo]);
+	else if("S"== outFnType[layerNo] || "s"== outFnType[layerNo])
+		firstDerivative = _B * output[layerNo] % (1 - output[layerNo]);
+	else if("SM"== outFnType[layerNo] || "sm"== outFnType[layerNo])
+			firstDerivative = output[layerNo] % (1 - output[layerNo]);
 	else
 	{
 		cout<<"First derivative of such a output function is not implemented"<<endl;
@@ -330,8 +377,28 @@ void DNN::compute_localgradients()
 //		localGradient[layerNo]->print("Local Gradients:");
 }
 
+
+void DNN::compute_localgradients(vector< Mat<elem_type> > &weights, vector< Mat<elem_type> > &output,
+								 Mat<elem_type> &outputError, vector< Mat<elem_type> > &localGradient)
+{
+	Mat<elem_type> firstDerivative;
+	for(int layerNo=nLayers-1;layerNo>=0;layerNo--)
+	{
+		compute_firstderivative(layerNo,firstDerivative,output);
+		if(layerNo == nLayers-1)
+			localGradient[layerNo] = outputError % firstDerivative;
+		else
+			localGradient[layerNo] = (weights[layerNo+1].t() * localGradient[layerNo+1]) % firstDerivative;
+	}
+
+//	for(int layerNo = 0;layerNo<nLayers;layerNo++)
+//		localGradient[layerNo]->print("Local Gradients:");
+}
+
 void DNN::compute_gradients(Mat<elem_type> &input)
 {
+	int nFrames;
+	nFrames = input.n_cols;
     for(int layerNo=0;layerNo<nLayers;layerNo++)
 	{
         *(prevGradient[layerNo]) = *(curGradient[layerNo]);
@@ -339,12 +406,40 @@ void DNN::compute_gradients(Mat<elem_type> &input)
 
 		//gradient of error w.r.t weights
 		if(layerNo==0)
-			*(curGradient[layerNo]) = *(localGradient[layerNo]) * input.t();
+			*(curGradient[layerNo]) = (1.0/nFrames) * (*(localGradient[layerNo])) * input.t();
 		else
-			*(curGradient[layerNo]) = *(localGradient[layerNo]) * (output[layerNo-1])->t();
+			*(curGradient[layerNo]) = (1.0/nFrames) * (*(localGradient[layerNo])) * (output[layerNo-1])->t();
 
         //gradient of error w.r.t bias of each unit
-        *(curBiasGradient[layerNo]) = sum(*(localGradient[layerNo]),1);
+        *(curBiasGradient[layerNo]) = (1.0/nFrames) * sum(*(localGradient[layerNo]),1);
+
+//        curGradient[layerNo]->print("curGradient:");
+//        curBiasGradient[layerNo]->print("curBiasGradient");
+	}
+}
+
+void DNN::compute_gradients(Mat<elem_type> &input,vector< Mat<elem_type> > &output,
+							vector< Mat<elem_type> > &localGradient,vector< Mat<elem_type> > &weightsGrad,
+							vector< Col<elem_type> > &biasGrad)
+{
+	int nFrames;
+	nFrames = input.n_cols;
+    for(int layerNo=0;layerNo<nLayers;layerNo++)
+	{
+//        *(prevGradient[layerNo]) = *(curGradient[layerNo]);
+//        *(prevBiasGradient[layerNo]) = *(curBiasGradient[layerNo]);
+
+		//gradient of error w.r.t weights
+		if(layerNo==0)
+			weightsGrad[layerNo] = (1.0/nFrames) * localGradient[layerNo] * input.t();
+		else
+			weightsGrad[layerNo] = (1.0/nFrames) * localGradient[layerNo] * output[layerNo-1].t();
+
+        //gradient of error w.r.t bias of each unit
+        biasGrad[layerNo] = (1.0/nFrames) * sum(localGradient[layerNo],1);
+
+//        weightsGradient[layerNo]->print("weightsGradient:");
+//        biasGradient[layerNo]->print("biasGradient");
 	}
 }
 
@@ -425,12 +520,13 @@ void DNN::compute_deltaswithdlrandmom(float momentum)
     adapt_lrgf();
 	for(int layerNo=0;layerNo<nLayers;layerNo++)
 	{
-		if(layerNo==0)
-			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
-		else
-			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
+//		if(layerNo==0)
+//			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
+//		else
+//			*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + (layerLr[layerNo]/batchSize) * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
 
-		*(deltaBias[layerNo]) = momentum * (*(deltaBias[layerNo])) + (layerLr[layerNo]/batchSize) * (*(biasgf[layerNo]) % (*(curBiasGradient[layerNo])));
+		*(deltaWeights[layerNo]) = momentum * (*(deltaWeights[layerNo])) + layerLr[layerNo] * (*(lrgf[layerNo]) % (*(curGradient[layerNo])));
+		*(deltaBias[layerNo]) = momentum * (*(deltaBias[layerNo])) + layerLr[layerNo] * (*(biasgf[layerNo]) % (*(curBiasGradient[layerNo])));
 	}
 }
 
@@ -477,4 +573,6 @@ void DNN::print_weights()
 		bias[layerNo]->print();
 	}
 }
+
+
 
