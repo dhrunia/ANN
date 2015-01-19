@@ -1,93 +1,85 @@
-#include "dlib/optimization/optimization_line_search.h"
-#include "dnn.h"
+#include "dlib/optimization.h"
+#include "dnn_cu.h"
 
 
 CGD::CGD()
 {
-//	cout<<"In CGD constructor"<<endl;
-//	input = &inputData;
-//	output = &outputData;
-//	cout<<"nLayers:"<<nn.nLayers<<endl;
-//	for(int layerNo = 1;layerNo <= nn->nLayers;layerNo++)
-//	{
-//		conjGrad.push_back(new Mat<elem_type>(nn->unitsInLayer[layerNo],
-//						   nn->unitsInLayer[layerNo-1],fill::zeros));
-////		cout<<"Dimension of conjGrad["<<layerNo<<"]: "<<nn.unitsInLayer[layerNo]<<"x"<<nn.unitsInLayer[layerNo-1]<<endl;
-//		conjBiasGrad.push_back(new Col<elem_type>(nn->unitsInLayer[layerNo],fill::zeros));
-////		cout<<"Dimension of conjGrad["<<layerNo<<"]: "<<nn.unitsInLayer[layerNo]<<endl;
-//	}
-//	cout<<"conjugate weights and bias gradients created"<<endl;
 	sigma = 0.1;
 	rho = sigma/2;
-//	cout<<"exiting CGD constructor"<<endl;
 }
 
 void CGD::initialise(Mat<elem_type> *inputData, Mat<elem_type> *outputData, DNN *nn_init)
 {
-//	cout<<"inside initialise"<<endl;
+	cout<<"inside initialise"<<endl;
 	CGD::input = inputData;
 	CGD::output = outputData;
 	CGD::nn = nn_init;
-//	cout<<"nLayers: "<<nn->nLayers<<endl;
+	cout<<"nLayers: "<<nn->nLayers<<endl;
 	for(int layerNo = 1;layerNo <= nn->nLayers;layerNo++)
 	{
+		weights.push_back(new Mat<elem_type>(nn->unitsInLayer[layerNo],nn->unitsInLayer[layerNo-1]+1));
+		tempOutput.push_back(new Mat<elem_type>(nn->unitsInLayer[layerNo]+1,nn->batchSize));
+		localGrad.push_back(new Mat<elem_type>(nn->unitsInLayer[layerNo],nn->batchSize));
+		wtsGrad.push_back(new Mat<elem_type>(nn->unitsInLayer[layerNo],nn->unitsInLayer[layerNo-1]+1));
 		CGD::conjGrad.push_back(new Mat<elem_type>(nn->unitsInLayer[layerNo],
-											  nn->unitsInLayer[layerNo-1],fill::zeros));
+											  nn->unitsInLayer[layerNo-1]+1,fill::zeros));
 //		cout<<"Dimension of conjGrad["<<layerNo<<"]: "<<nn->unitsInLayer[layerNo]<<"x"<<nn->unitsInLayer[layerNo-1]<<endl;
-		CGD::conjBiasGrad.push_back(new Col<elem_type>(nn->unitsInLayer[layerNo],fill::zeros));
+//		CGD::conjBiasGrad.push_back(new Col<elem_type>(nn->unitsInLayer[layerNo],fill::zeros));
 //		cout<<"Dimension of conjGrad["<<layerNo<<"]: "<<nn->unitsInLayer[layerNo]<<endl;
 	}
-//	cout<<"conjugate weights and bias gradients created"<<endl;
+	outputError = new Mat<elem_type>(output->n_rows,nn->batchSize);
+	cout<<"conjugate direction(conjGrad) created"<<endl;
 }
 
 double CGD::cgd(int epochNo)
 {
 	double error;
 	double f0,d0; // average error(cost function) and its derivative at alpha = 0, i.e f(w) and f'(w)
+
 	nn->compute_output(*input);
-//	cout<<"outputs computed"<<endl;
+	cout<<"outputs computed"<<endl;
 	error = nn->compute_outputerror(*output);
-//	cout<<"error computed"<<endl;
+	cout<<"error computed"<<endl;
 	nn->compute_localgradients();
-//	cout<<"local gradients computed"<<endl;
+	cout<<"local gradients computed"<<endl;
 	nn->compute_gradients(*input);
-//	cout<<"gradients computed"<<endl;
+	cout<<"gradients computed"<<endl;
 	if(epochNo == 0)
 	{
 		for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
 		{
 			*(conjGrad[layerNo]) = *(nn->curGradient[layerNo]);
-			*(conjBiasGrad[layerNo]) = *(nn->curBiasGradient[layerNo]);
+//			*(conjBiasGrad[layerNo]) = *(nn->curBiasGradient[layerNo]);
 		}
-//		cout<<"conjugate gradients computed"<<endl;
+		cout<<"conjugate gradients computed"<<endl;
 	}
 	else
 	{
 		compute_beta();
-//		cout<<"Beta: "<<beta<<endl;
+		cout<<"Beta: "<<beta<<endl;
 		for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
 		{
-			*(conjGrad[layerNo]) = *(nn->curGradient[layerNo]) + beta * (*(conjGrad[layerNo]));
-			*(conjBiasGrad[layerNo]) = *(nn->curBiasGradient[layerNo]) + beta * (*(conjBiasGrad[layerNo]));
+		    matadd(nn->curGradient[layerNo]->memptr(),conjGrad[layerNo]->memptr(),conjGrad[layerNo]->n_rows,
+		           conjGrad[layerNo]->n_cols,1,beta,conjGrad[layerNo]->memptr());
+//			*(conjGrad[layerNo]) = *(nn->curGradient[layerNo]) + beta * (*(conjGrad[layerNo]));
+//			*(conjBiasGrad[layerNo]) = *(nn->curBiasGradient[layerNo]) + beta * (*(conjBiasGrad[layerNo]));
 		}
-//		cout<<"conjugate gradients computed"<<endl;
+		cout<<"conjugate gradients computed"<<endl;
 	}
 	f0 = avgerror(0.0);
-//	cout<<"f0: "<<f0<<endl;
+	cout<<"f0: "<<f0<<endl;
 	d0 = avgerror_der(0.0);
-//	cout<<"d0: "<<d0<<endl;
-	double fval = 0;
+	cout<<"d0: "<<d0<<endl;
+//	double fval = 0;
 //	eta = 0;
 //	fval = dlib::find_min_single_variable(CGD::avgerror,eta,0,1,1e-3,1e5);
-	eta = dlib::line_search(CGD::avgerror,f0,CGD::avgerror_der,d0,rho,sigma,0,10);
+	eta = dlib::line_search(CGD::avgerror,f0,CGD::avgerror_der,d0,rho,sigma,0,1000000);
 //	eta = dlib::backtracking_line_search(CGD::avgerror,f0,d0,1,rho,1000);
 //	eta = 0.1;
-	if(isnan(eta))
-		eta = 0.01;
 //	cout<<"fval: "<<fval<<endl;
-//	cout<<"Eta: "<<eta<<endl;
+	cout<<"Eta: "<<eta<<endl;
 	adjust_weights();
-//	cout<<"weights adjusted"<<endl;
+	cout<<"weights adjusted"<<endl;
 	return error;
 }
 
@@ -95,33 +87,20 @@ double CGD::avgerror(double alpha)
 { //compute the average error for the given alpha i.e f(start + alpha*direction) where start is the
   //current weights and direction is the conjugate gradient direction.
 
-	std::vector< Mat<elem_type> > weights;
-	std::vector< Col<elem_type> > bias;
-	vector< Mat<elem_type> > tempOutput;
-	Mat<elem_type> activation;
-	Mat<elem_type> outputError;
-	double avgError;
+//	std::vector< Mat<elem_type> > weights;
+//	std::vector< Col<elem_type> > bias;
+//	vector< Mat<elem_type> > tempOutput;
+//	Mat<elem_type> activation;
+//	Mat<elem_type> outputError;
 	for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
 	{
-		weights.push_back(nn->weights[layerNo] + alpha * (*(conjGrad[layerNo])) );
-		bias.push_back(*(nn->bias[layerNo]) + alpha * (*(conjBiasGrad[layerNo])) );
-		tempOutput.push_back(Mat<elem_type>());
+	    matadd(nn->weights[layerNo].memptr(),conjGrad[layerNo]->memptr(),conjGrad[layerNo]->n_rows,
+	           conjGrad[layerNo]->n_cols,1,alpha,weights[layerNo]->memptr());
+//		*(weights[layerNo]) = nn->weights[layerNo] + alpha * (*(conjGrad[layerNo]));
+//		bias.push_back(*(nn->bias[layerNo]) + alpha * (*(conjBiasGrad[layerNo])) );
 	}
-
-//	for(int layerNo=0; layerNo<nn->nLayers; layerNo++)
-//	{
-//		if(layerNo == 0)
-//			activation=weights[layerNo]* (*input); //compute the activation value of each unit in layer zero
-//		else
-//			activation=weights[layerNo] * tempOutput; //compute the activation value of each unit in layer h > 0
-//		activation.each_col() += (bias[layerNo]);
-////		cout<<"activation values of layer "<<layerNo<<" computed"<<endl;
-//		nn->output_function(activation,layerNo,tempOutput); //apply the output function to the activation value of each unit
-////		cout<<"outputs of layer "<<layerNo<<" computed"<<endl;
-//	}
-
-	nn->compute_output(*input,weights,bias,tempOutput);
-	avgError = nn->compute_outputerror(*output,tempOutput[nn->nLayers-1],outputError);
+	nn->compute_output(*input,weights,tempOutput);
+	avgError = nn->compute_outputerror(*output,*(tempOutput[nn->nLayers-1]),*outputError);
 	return avgError;
 }
 
@@ -130,37 +109,32 @@ double CGD::avgerror_der(double alpha)
   //current weights and direction is the conjugate gradient direction.
 	Col<elem_type> r; // flattened negative gradient of cost function(avgerror)
 	Col<elem_type> s; // flattened conjugate gradient direction
-	std::vector< Mat<elem_type> > weights;
-	std::vector< Col<elem_type> > bias;
-	std::vector< Mat<elem_type> > tempOutput; //store the outputs computed using current weights(=w(n)+alpha*s(n))
-	Mat<elem_type> outputError;
-	std::vector< Mat<elem_type> > localGrad;
-	std::vector< Mat<elem_type> > wtsGrad;
-	std::vector< Col<elem_type> > biasGrad;
-	Mat<elem_type> temp_output;
-	Mat<elem_type> activation;
-	double avgError;
-	double avgerror_der = 0;
+//	std::vector< Mat<elem_type> > weights;
+//	std::vector< Col<elem_type> > bias;
+//	std::vector< Mat<elem_type> > tempOutput; //store the outputs computed using current weights(=w(n)+alpha*s(n))
+//	Mat<elem_type> outputError;
+//	std::vector< Mat<elem_type> > localGrad;
+//	std::vector< Mat<elem_type> > wtsGrad;
+//	std::vector< Col<elem_type> > biasGrad;
+    avgError_der = 0;
+/*	for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
+	{
+		*(weights[layerNo]) = nn->weights[layerNo] + alpha * (*(conjGrad[layerNo]));
+//		bias.push_back(*(nn->bias[layerNo]) + alpha * (*(conjBiasGrad[layerNo])) );
+//		biasGrad.push_back(Col<elem_type>());
+	}
+*/
+//	nn->compute_output(*input,weights,tempOutput);
+//	avgError = nn->compute_outputerror(*output,*(tempOutput[nn->nLayers-1]),*outputError);
+	nn->compute_localgradients(weights,tempOutput,*outputError,localGrad);
+	nn->compute_gradients(*input,tempOutput,localGrad,wtsGrad);
 	for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
 	{
-		weights.push_back(nn->weights[layerNo] + alpha * (*(conjGrad[layerNo])) );
-		bias.push_back(*(nn->bias[layerNo]) + alpha * (*(conjBiasGrad[layerNo])) );
-		tempOutput.push_back(Mat<elem_type>());
-		localGrad.push_back(Mat<elem_type>());
-		wtsGrad.push_back(Mat<elem_type>());
-		biasGrad.push_back(Col<elem_type>());
+		r = vectorise(*(wtsGrad[layerNo]));
+		s = vectorise(*(conjGrad[layerNo]));
+		avgError_der += dot(r,s) ;
 	}
-	nn->compute_output(*input,weights,bias,tempOutput);
-	avgError = nn->compute_outputerror(*output,tempOutput[nn->nLayers-1],outputError);
-	nn->compute_localgradients(weights,tempOutput,outputError,localGrad);
-	nn->compute_gradients(*input,tempOutput,localGrad,wtsGrad,biasGrad);
-	for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
-	{
-		r = join_cols(vectorise(wtsGrad[layerNo]),biasGrad[layerNo]);
-		s = join_cols(vectorise(*(conjGrad[layerNo])),*(conjBiasGrad[layerNo]));
-		avgerror_der += dot(r,s) ;
-	}
-	return -(avgerror_der);
+	return -(avgError_der);
 
 }
 
@@ -168,9 +142,9 @@ void CGD::adjust_weights()
 {
 	for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
 	{
-		nn->weights[layerNo] = nn->weights[layerNo] + eta * (*(conjGrad[layerNo]));
-		*(nn->bias[layerNo]) = *(nn->bias[layerNo]) + eta * (*(conjBiasGrad[layerNo]));
-
+	    matadd(nn->weights[layerNo].memptr(),conjGrad[layerNo]->memptr(),conjGrad[layerNo]->n_rows,
+	           conjGrad[layerNo]->n_cols,1,eta,nn->weights[layerNo].memptr());
+//		*(nn->bias[layerNo]) = *(nn->bias[layerNo]) + eta * (*(conjBiasGrad[layerNo]));
 	}
 }
 
@@ -183,8 +157,8 @@ void CGD::compute_beta()
 	double beta_den = 0; //denominator in the Polak Ribere formula "Neural networks and machine learning by Haykin pg:191"
 	for(int layerNo = 0;layerNo < nn->nLayers;layerNo++)
 	{
-		r = join_cols(vectorise(*(nn->curGradient[layerNo])),*(nn->curBiasGradient[layerNo]));
-		old_r = join_cols(vectorise(*(nn->prevGradient[layerNo])),*(nn->prevBiasGradient[layerNo]));
+		r = vectorise(*(nn->curGradient[layerNo]));
+		old_r = vectorise(*(nn->prevGradient[layerNo]));
 //		r.print("r:");
 //		old_r.print("old_r:");
 		beta_num += dot(r,(r - old_r));
@@ -207,15 +181,15 @@ void CGD::train(int nEpochs,const char *weightsFname)
 {
 	const char *errorFname,*valErrFname;
 	int nFramesTrain,nFramesValid,nFrames,batchesPerEpoch,batchSize,batchSP,validCount;
-	double batchError,prevError1,prevError2,validError,prevValidError;
+	double batchError,validError,prevValidError;
 	uvec frameNos,batchFrameNos;
 	Mat<elem_type> *batchInput;
 	Mat<elem_type> *batchOutput;
 	Mat<elem_type> &inputData = *input;
 	Mat<elem_type> &outputData = *output;
 	Mat<elem_type> *validationSetInput,*validationSetOutput;
-	errorFname = "errors.txt";
-	valErrFname = "valid_error.txt";
+	errorFname = "errors_cuda.txt";
+	valErrFname = "valid_error_cuda.txt";
 	batchSize = nn->batchSize;
 	validCount = 0;
 	batchInput = new Mat<elem_type>(nn->inputDimension,batchSize,fill::zeros);
@@ -250,7 +224,7 @@ void CGD::train(int nEpochs,const char *weightsFname)
 		frameNos = linspace<uvec>(0,nFramesTrain-1,nFramesTrain);
 		frameNos = shuffle(frameNos);
 //		frameNos << 1 << 4 << 0;
-		cout<<"Epoch: "<<epochNo<<""<<endl;
+//		cout<<"Epoch: "<<epochNo<<""<<endl;
 		for(int batchNo=0;batchNo<batchesPerEpoch;batchNo++)
 		{
 //            cout<<"Batch Number: "<<batchNo<<endl;
@@ -262,9 +236,7 @@ void CGD::train(int nEpochs,const char *weightsFname)
 			output = batchOutput;
 			batchError += cgd(epochNo) / batchesPerEpoch;
 		}
-		prevError2 = prevError1;
-		prevError1 = batchError;
-		cout<<"\tError: "<<batchError<<endl;
+		cout<<"Error: "<<batchError<<endl;
 		errfh<<batchError<<endl;
 
 //CROSS VALIDATION
@@ -347,8 +319,8 @@ void BGD::train(DNN &nn,Mat<elem_type> &input, Mat<elem_type> &output,
 	Mat<elem_type> *batchInput;
 	Mat<elem_type> *batchOutput;
 	Mat<elem_type> *validationSetInput,*validationSetOutput;
-	errorFname = "errors.txt";
-	valErrFname = "valid_error.txt";
+	errorFname = "errors_cuda.txt";
+	valErrFname = "valid_error_cuda.txt";
 	batchSize = nn.batchSize;
 	validCount = 0;
 	batchInput = new Mat<elem_type>(nn.inputDimension,batchSize,fill::zeros);
@@ -430,3 +402,4 @@ void BGD::train(DNN &nn,Mat<elem_type> &input, Mat<elem_type> &output,
 
 	errfh.close();
 }
+

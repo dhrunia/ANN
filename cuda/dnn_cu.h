@@ -36,7 +36,7 @@ class DNN
 	vector<float> layerLr; //layer wise learning rate
 	vector< Mat<elem_type>* > lrPerCon; //learning rate per each connection
 	vector< Mat<elem_type>* > lrgf; //learning rate gain factor. Used in adapative learning rate
-    vector< Col<elem_type>* >biasgf; //bias gain factor
+//    vector< Col<elem_type>* >biasgf; //bias gain factor
 	bool firstEpoch;
 	vector<float> localGradients;
 	const char *paramsFileName; //file containing parameters for the neural network
@@ -49,7 +49,7 @@ class DNN
 //	vector< Mat<elem_type>* > curGradient;
 	vector< Mat<elem_type>* > firstDerivative;
 	vector< Mat<elem_type>* > deltaWeights;
-	vector< Col<elem_type>* > deltaBias;
+//	vector< Col<elem_type>* > deltaBias;
 
 	float _A;		// Tanh Parameter
 	float _B;		// Tanh Parameter
@@ -66,30 +66,28 @@ public:
 	int outputDimension;
 	vector< Mat<elem_type>* > curGradient;
 	vector< Mat<elem_type>* > prevGradient;
-	vector< Col<elem_type>* > prevBiasGradient;
-	vector< Col<elem_type>* > curBiasGradient;
+//	vector< Col<elem_type>* > prevBiasGradient;
+//	vector< Col<elem_type>* > curBiasGradient;
 	DNN(Params &);
 	DNN(Params&,const char*,string);
 	void initialize_weights();
 	void configure_network();
 	void read_nnparams(Params &nnParams);
 	void compute_output(Mat<elem_type> &input);	/* Pass the Input Pattern*/
-	void compute_output(Mat<elem_type>&, vector< Mat<elem_type> >&,
-						vector< Col<elem_type> >&,vector< Mat<elem_type> >&);
-//	void compute_deltas();
+	void compute_output(Mat<elem_type>&, vector< Mat<elem_type>* >&,vector< Mat<elem_type>* >&);
 	void output_function(Mat<elem_type>&,int);
 	void output_function(Mat<elem_type>&, int, Mat<elem_type>&);
 	double compute_outputerror(Mat<elem_type>&); // computes the difference in original and desired outputs
 								   //and MSE(mean squared error)
 	double compute_outputerror(Mat<elem_type>&, Mat<elem_type>&,Mat<elem_type>&);
 	void compute_firstderivative(int);
-	void compute_firstderivative(int, Mat<elem_type>&, vector< Mat<elem_type> >&);
+	void compute_firstderivative(int, Mat<elem_type>&, vector< Mat<elem_type>* >&);
 	void compute_localgradients();
-	void compute_localgradients(vector< Mat<elem_type> >&, vector< Mat<elem_type> >&,
-								Mat<elem_type>&, vector< Mat<elem_type> >&);
+	void compute_localgradients(vector< Mat<elem_type>* >&, vector< Mat<elem_type>* >&,
+								Mat<elem_type>&, vector< Mat<elem_type>* >&);
 	void compute_gradients(Mat<elem_type>&);
-	void compute_gradients(Mat<elem_type>&, vector< Mat<elem_type> >&, vector< Mat<elem_type> >&,
-								vector< Mat<elem_type> >&, vector< Col<elem_type> >&);
+	void compute_gradients(Mat<elem_type>&, vector< Mat<elem_type>* >&, vector< Mat<elem_type>* >&,
+						   vector< Mat<elem_type>* >&);
 
 	void adapt_lrgf();
 	void gen_output(Mat<elem_type>&,const char*,bool);
@@ -122,15 +120,22 @@ class CGD: public TrainingAlgorithm
 {
 	private:
 		static vector< Mat<elem_type>* > conjGrad; //conjugate gradient for weights
-		static vector< Col<elem_type>* > conjBiasGrad; //conjugate gradient for bias
+//		static vector< Col<elem_type>* > conjBiasGrad; //conjugate gradient for bias
 		double beta;
 		double rho;
 		double sigma;
 	public:
 		static double eta;
+		static double avgError;
+		static double avgError_der;
 		static Mat<elem_type> *input;
 		static Mat<elem_type> *output;
 		static DNN *nn;
+		static vector< Mat<elem_type>* > weights;
+		static vector< Mat<elem_type>* > tempOutput;
+       	static Mat<elem_type>* outputError;
+        static vector< Mat<elem_type>* > localGrad;
+	    static vector< Mat<elem_type>* > wtsGrad;
 //		CGD(Mat<elem_type>&, Mat<elem_type>&, DNN&);
 		CGD();
 		void initialise(Mat<elem_type>*, Mat<elem_type>*, DNN*);
@@ -140,16 +145,22 @@ class CGD: public TrainingAlgorithm
 		static double avgerror_der(double);
 		void adjust_weights();
 		void train(int, const char*);
-//		void train(int,const char*,Mat<elem_type>&,Mat<elem_type>&);
 
 };
 
 Mat<elem_type>* CGD::input;
 Mat<elem_type>* CGD::output;
 vector< Mat<elem_type>* > CGD::conjGrad;
-vector< Col<elem_type>* > CGD::conjBiasGrad;
+vector< Mat<elem_type>* > CGD::weights;
+vector< Mat<elem_type>* > CGD::tempOutput;
+Mat<elem_type>* CGD::outputError;
+vector< Mat<elem_type>* > CGD::localGrad;
+vector< Mat<elem_type>* > CGD::wtsGrad;
+//vector< Col<elem_type>* > CGD::conjBiasGrad;
 DNN* CGD::nn;
 double CGD::eta;
+double CGD::avgError;
+double CGD::avgError_der;
 
 //class Train
 //{ //This class is a wrapper for training the neural network model
@@ -162,3 +173,4 @@ double CGD::eta;
 //};
 
 #endif /* DNN_H_ */
+

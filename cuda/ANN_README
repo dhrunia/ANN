@@ -33,6 +33,7 @@ g++ DnnTrain_v*.cpp -I /path/to/dlib/source/folder -O2 -larmadillo -o DnnTrain_v
 
 with external libraries like openblas:
 g++ DnnTrain_v*.cpp -I /path/to/dlib/source/folder -llapack -lopenblas -o DnnTrain_v*
+nvcc -I../Softwares/dlib-18.9/ -L/usr/lib/openblas-base -llapack -lopenblas -lcublas -o DnnTrain_v1_cuda DnnTrain_v1.cu
 
 Note: If libraries are not installed in default locations then use -L option to add the library location. For example if openblas is installed in /home/user/openblas then run it as:
 
@@ -43,9 +44,8 @@ Also make sure path to openblas.so (Ex: /usr/lib/openblas-base) is in LD_LIB_PAT
 step2:execute the program as follows:
 
 ./DnnTrain_v* <parameters file> <input file> <output file> <weights file> <#Epochs> <momentum>
-
 Ex: ./DnnTrain_v* params train.lpcc train.frm weights.txt 60 0.3
-
+./DnnTrain_v1_cuda params train.lpcc train.frm weights_cuda.txt 100 0.3
 parameters file:
 -------------------------------------------------------------------------------------------------------
 This has all the parameters required to intialize the DNN class. Its structure is as follows

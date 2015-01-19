@@ -1,10 +1,10 @@
 
 #include<iostream>
 #include<armadillo>
-#include "dnn.h"
-#include "utils.cpp"
-#include "Dnn_v1.cpp"
-#include "TrainingAlgorithm.cpp"
+#include "dnn_cu.h"
+#include "utils.cu"
+#include "Dnn_v1.cu"
+#include "TrainingAlgorithm.cu"
 #include "params.cpp"
 #include<sstream>
 #include<fstream>
@@ -20,7 +20,6 @@ int main(int argc,char** argv)
 {
 	const char *inpFname,*outFname,*paramsFname,*weightsFname;
 	int nFrames,temp,nEpochs;
-	int validCount = 0; // keeps a count of number of times validation error increased from previous validation error contiguously
 	float momentum;
 	double timeElapsed;
 	clock_t startTime,endTime;
@@ -62,22 +61,24 @@ int main(int argc,char** argv)
 		cerr<<"argument 6: Momentum"<<endl;
 		exit(0);
 	}
-	Params nnParams(paramsFname);
+    Params nnParams(paramsFname);
 	nFrames =  ReadData(inpFname,(*inputData));
 //	cout<<"Total Frames in input:"<<nFrames<<endl;
 	cout<<"Dim. of input data: "<<inputData->n_rows<<"x"<<inputData->n_cols<<endl;
 	temp = ReadData(outFname,(*outputData));
 	cout<<"Dim. of output data: "<<outputData->n_rows<<"x"<<outputData->n_cols<<endl;
-	if(temp != nFrames)
-	{
-		cout<<"No.of frames in input and output does not match"<<endl;
-		exit(0);
-	}
 	if(nnParams.preProcessData)
 	{
 		preprocess_data(*inputData);
 //		preprocess_data(*outputData);
 	}
+	if(temp != nFrames)
+	{
+		cout<<"No.of frames in input and output does not match"<<endl;
+		exit(0);
+	}
+	insert_onesrow(*inputData);
+	cout<<"Row of ones inserted in the input matrix"<<endl;
 	//shuffle the data
 //	frameNos = randi<uvec>(nFrames,distr_param(0,nFrames-1));
     frameNos = linspace<uvec>(0,nFrames-1,nFrames);
@@ -96,13 +97,15 @@ int main(int argc,char** argv)
 //	cout<<OutputData;
 //	cout<<"Dim. of output data :"<<outputData->n_rows<<"x"<<outputData->n_cols<<endl;
 //	cout<<outputData.submat(0,0,4,2);
+
     DNN *nn;
+    cout<<"loadWeights: "<<nnParams.loadWeights<<endl;
     if(nnParams.loadWeights == "random")
     	nn = new DNN(nnParams);
     else
     	nn = new DNN(nnParams,nnParams.loadWeights.c_str(),"arma_ascii");
-//	cout<<"DNN object created"<<endl;
 
+	cout<<"DNN object created"<<endl;
 	if(nnParams.trainAlgoType == "BGD" || nnParams.trainAlgoType == "bgd")
 	{
 		BGD *trainAlgo = new BGD();
@@ -111,9 +114,9 @@ int main(int argc,char** argv)
 	else if(nnParams.trainAlgoType == "CGD" || nnParams.trainAlgoType == "cgd")
 	{
 		CGD *trainAlgo = new CGD();
-//		cout<<"CGD object created"<<endl;
+		cout<<"CGD object created"<<endl;
 		trainAlgo->initialise(inputData,outputData,nn);
-//		cout<<"CGD initialisation completed"<<endl;
+		cout<<"CGD initialisation completed"<<endl;
 		trainAlgo->train(nEpochs,weightsFname);
 	}
     endTime = clock();
@@ -121,5 +124,6 @@ int main(int argc,char** argv)
 	cout << fixed << showpoint << setprecision(2);
 	cout<<"Time elapsed: "<< timeElapsed <<" minutes" <<endl;
 }
+
 
 
